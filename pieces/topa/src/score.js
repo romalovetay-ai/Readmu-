@@ -36,7 +36,7 @@
   pop(E.away + 2.2, 0.06);                                                // onto the branch
   // ---- 3. sad: stuck, Topa cries
   to = 'm';
-  pad(E.away + 1.0, E.rabbitIn - 0.1, ['B2', 'D3', 'Fs3', 'B3'], 0.03, { type: 'triangle', cut: 900, att: 0.6, rel: 0.5, send: 0.4 });
+  pad(E.away + 1.0, E.rabbitIn - 0.1, ['B2', 'D3', 'Fs3', 'B3'], 0.01, { type: 'triangle', cut: 700, att: 0.6, rel: 0.5, send: 0.4 });
   ['Fs5', 'D5', 'B4', 'A4', 'Fs4'].forEach((n, i) => pluck(VL('l4').t0 + i * 0.6, nz(n), 0.06, 0, 0.6, 2000, 0.4));
   to = 's';
   for (let i = 0; i < 6; i++) blip(E.cry + i * 0.33, 1900, 1150, 0.12, 0.03, i % 2 ? 0.3 : -0.3);   // tear drops
@@ -50,7 +50,7 @@
   groove(E.hogIn - 0.25, E.climb - 0.25, 0.08);
   to = 's';
   for (let t = E.hogIn; t < E.hogIn + 1.4; t += E16) noiseHit(t, 0.03, 'bandpass', 2400, 2, 0.02, 0.2);   // little running feet
-  E.stumps.forEach((t, i) => { thud(t, 0.14); pop(t + 0.05, 0.04 + i * 0.01); });
+  E.stumps.forEach((t, i) => { thud(t, 0.07); pop(t + 0.05, 0.04 + i * 0.01); });
   // ---- 6. Topa climbs: up the scale, almost... no
   to = 'm';
   ['D5', 'E5', 'Fs5', 'G5'].forEach((n, i) => pluck(E.climb + i * 0.4, nz(n), 0.08, 0, 0.3, 4000, 0.25));
@@ -71,15 +71,15 @@
   for (let t = E.lift + 0.2; t < E.lift + 1.4; t += 0.3) flap(t, 0.006);
   // ---- 9. THE PAYOFF: the balloon lands in Topa's paws
   to = 'm';
-  ['D4', 'A4', 'D5', 'Fs5', 'A5'].forEach((n, i) => pluck(E.land, nz(n), 0.22, -0.4 + i * 0.2, 0.45, 5200, 0.35));
-  to = 's'; sub(E.land, 0.3); noiseHit(E.land, 0.5, 'highpass', 3000, 0.5, 0.06, 0, 0.4);
+  ['D4', 'A4', 'D5', 'Fs5', 'A5'].forEach((n, i) => pluck(E.land, nz(n), 0.3, -0.4 + i * 0.2, 0.45, 5200, 0.35));
+  to = 's'; sub(E.land, 0.45); noiseHit(E.land, 0.5, 'highpass', 3000, 0.5, 0.06, 0, 0.4);
   to = 'm'; chime(E.land + 0.05, [nz('D6'), nz('A6')], 0.05);
-  pad(E.land, E.hooray - 0.1, ['D3', 'A3', 'D4', 'Fs4'], 0.035, { cut: 1400, att: 0.08, rel: 0.4, send: 0.5 });
+  pad(E.land, E.hooray - 0.1, ['D3', 'A3', 'D4', 'Fs4'], 0.02, { cut: 1400, att: 0.08, rel: 0.4, send: 0.5 });
   // ---- 10. hooray: everyone dances
   groove(onBeat(E.hooray - 0.25), DURATION - 1.5, 0.1, { fourOnFloor: true });
   to = 's';
   for (let i = 0; i < 6; i++) { pop(E.hooray + i * 0.35, 0.04); }
   for (let i = 0; i < 8; i++) chirp(E.hooray + 0.6 + i * 0.8, 0.03, i % 2 ? 0.5 : -0.5);
   to = 'm';
-  ['D4', 'A4', 'D5', 'Fs5', 'A5', 'D6'].forEach((n, i) => pluck(DURATION - 1.5 + i * 0.03, nz(n), 0.14, -0.5 + i * 0.2, 1.2, 4500, 0.5));   // the last chord
+  ['D4', 'A4', 'D5', 'Fs5', 'A5', 'D6'].forEach((n, i) => pluck(DURATION - 1.5 + i * 0.03, nz(n), 0.09, -0.5 + i * 0.2, 1.2, 4500, 0.5));   // the last chord
   chime(E.end, [nz('D6'), nz('Fs6'), nz('A6')], 0.04);
