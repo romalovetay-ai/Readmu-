@@ -2,6 +2,7 @@
   "name": "topa",
   "title": "Топа и шарик",
   "format": { "width": 1920, "height": 1080, "fps": 24, "bpm": 120 },
+  "formats": ["16:9", "9:16"],
   "storyFormat": "F4 mission",
   "style": "cut-paper",
   "scenes": ["src/characters.js", "src/scenes.js", "src/world.js"],

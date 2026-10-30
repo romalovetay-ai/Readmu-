@@ -20,11 +20,15 @@
 //  world (src/scenes.js) at its own time, and pieceCam() (src/bridges.js) frames it. All cuts are hard, on the 8th grid.
 //  The voice is the clock: every event below is cued from VOICE (voice.json, injected by build.mjs).
 // =====================================================================
-const FORMAT = '16:9', FPS = 24, W = 1920, H = 1080;
+const FORMATS = { '16:9': [1920, 1080], '9:16': [1080, 1920] };
+const FORMAT = new URLSearchParams(location.search).get('format') || '16:9';   // 16:9 for YouTube, 9:16 for Shorts
+const FPS = 24, [W, H] = FORMATS[FORMAT];
+{ const cv = document.getElementById('c'); cv.width = W; cv.height = H; }
+const WW = 1920, WH = 1080;   // the meadow's own size (world coords), whatever the frame
 const BPM = 120, BEAT = 60 / BPM, E8 = BEAT / 2, E16 = BEAT / 4, GRID0 = 0;
-const SAFE = { top: 60, bottom: 110, right: 60 };
+const SAFE = { '16:9': { top: 60, bottom: 110, right: 60 }, '9:16': { top: 240, bottom: 420, right: 140 } }[FORMAT];
 const HAND = '"Comic Sans MS", "Comic Neue", "Inter", "DejaVu Sans", sans-serif';   // Cyrillic-capable, rounded first
-const CX = W / 2;
+const CX = (W - SAFE.right) / 2;
 const onBeat = (t) => +(GRID0 + Math.round((t - GRID0) / E8) * E8).toFixed(4);
 
 // ---- the voice

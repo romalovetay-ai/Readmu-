@@ -2,7 +2,7 @@
 //  THE WORLD — sky, sun, clouds, hills, the big tree, flowers, small life, wind, confetti; and sceneMeadow().
 // =====================================================================
 function sky() {
-  cut(rect(-400, -400, W + 800, H + 800, 0), '#a6dcf3', { key: 'sky', shadow: false, tear: 0, shade: false, grain: 0.4, pat: pat.stripes('rgba(255,255,255,0.16)', 26, 90, 0.25) });
+  cut(rect(-600, -900, WW + 1200, WH + 1800, 0), '#a6dcf3', { key: 'sky', shadow: false, tear: 0, shade: false, grain: 0.4, pat: pat.stripes('rgba(255,255,255,0.16)', 26, 90, 0.25) });
   // the sun with a face, its rays turning
   const sx = 230, sy = 165, ra = TT * 0.4;
   for (let i = 0; i < 12; i++) { const a = ra + i / 12 * TAU; cut([[sx + Math.cos(a - 0.12) * 100, sy + Math.sin(a - 0.12) * 100], [sx + Math.cos(a) * (150 + (i % 2) * 20), sy + Math.sin(a) * (150 + (i % 2) * 20)], [sx + Math.cos(a + 0.12) * 100, sy + Math.sin(a + 0.12) * 100]], '#f7c948', { key: 'sr' + i, sb: 6, sy: 3, grain: 0.5 }); }
@@ -11,11 +11,11 @@ function sky() {
   // clouds drifting (faster in the wind)
   const drift = TT * 18 + clamp(seg(TT, EV.wind, EV.away + 2)) * 260;
   [[300, 120, 1], [1050, 90, 0.8], [1700, 170, 0.9], [2300, 110, 0.7]].forEach(([x0, y, s], i) => {
-    const x = mod(x0 + drift * (0.6 + i * 0.15), W + 700) - 350;
+    const x = mod(x0 + drift * (0.6 + i * 0.15), WW + 700) - 350;
     for (const [dx, dy, r] of [[-60, 10, 52], [0, -12, 66], [62, 8, 50], [10, 22, 58]]) cut(ellipsePts(x + dx * s, y + dy * s, r * s * 1.2, r * s * 0.8, 0, 22), '#ffffff', { key: 'cl' + i + dx, sb: 8, sy: 5, grain: 0.3 });
   });
   // birds far away
-  for (let i = 0; i < 3; i++) { const x = mod(500 + i * 90 + TT * 40, W + 400) - 200, y = 300 + i * 18 + Math.sin(TT * 3 + i) * 6, f = Math.sin(TT * 14 + i) * 8; ink([[x - 16, y - f], [x, y], [x + 16, y - f]], { w: 3, color: '#4a5a70', amt: 0.3, key: 'fb' + i }); }
+  for (let i = 0; i < 3; i++) { const x = mod(500 + i * 90 + TT * 40, WW + 400) - 200, y = 300 + i * 18 + Math.sin(TT * 3 + i) * 6, f = Math.sin(TT * 14 + i) * 8; ink([[x - 16, y - f], [x, y], [x + 16, y - f]], { w: 3, color: '#4a5a70', amt: 0.3, key: 'fb' + i }); }
 }
 function hills() {
   cut(ellipsePts(380, 860, 760, 280, 0, 60), '#a8dc8e', { key: 'h1', sb: 14, pat: pat.dots('rgba(255,255,255,0.18)', 3, 46) });
@@ -26,14 +26,14 @@ function hills() {
   }
 }
 function meadow() {
-  const P = [[-300, 760]]; for (let x = -300; x <= W + 300; x += 120) P.push([x, 740 + Math.sin(x * 0.006) * 22]);
-  P.push([W + 300, H + 300], [-300, H + 300]);
+  const P = [[-300, 760]]; for (let x = -300; x <= WW + 300; x += 120) P.push([x, 740 + Math.sin(x * 0.006) * 22]);
+  P.push([WW + 300, WH + 700], [-300, WH + 700]);
   cut(P, PAL.green, { key: 'mead', shadow: false, tear: 0.6, pat: pat.stripes('rgba(255,255,255,0.10)', 5, 34, -0.3) });
-  cut([[-300, 1010], [W * 0.4, 990], [W + 300, 1020], [W + 300, H + 300], [-300, H + 300]], PAL.greenD, { key: 'mead2', tear: 0.8, sy: -5 });
+  cut([[-300, 1010], [WW * 0.4, 990], [WW + 300, 1020], [WW + 300, WH + 700], [-300, WH + 700]], PAL.greenD, { key: 'mead2', tear: 0.8, sy: -5 });
   // grass tufts that sway
   const R = RNG('tufts');
   for (let i = 0; i < 26; i++) {
-    const x = R.r(-40, W + 40), y = R.r(780, 1060), lean = Math.sin(TT * 2 + i) * 0.12 + windK() * 0.6;
+    const x = R.r(-40, WW + 40), y = R.r(780, 1060), lean = Math.sin(TT * 2 + i) * 0.12 + windK() * 0.6;
     for (let k = -1; k <= 1; k++) ink([[x + k * 10, y], [x + k * 14 + Math.sin(lean) * 34, y - 34 + k * k * 6]], { w: 4, color: '#3f8a47', amt: 0.3, key: 'tf' + i + k });
   }
 }
@@ -82,22 +82,22 @@ function snail() {
 function windLines() {
   const k = windK(); if (k <= 0) return;
   for (let i = 0; i < 7; i++) {
-    const R = RNG('wl', i), y0 = R.r(150, 850), x = mod(R.f() * 2000 + TT * 1500, W + 900) - 450, P = [];
+    const R = RNG('wl', i), y0 = R.r(150, 850), x = mod(R.f() * 2000 + TT * 1500, WW + 900) - 450, P = [];
     for (let j = 0; j <= 14; j++) P.push([x + j * 26, y0 + Math.sin(j * 0.5 + TT * 6 + i) * 18]);
     const n = P.length; P.push([P[n - 1][0] + 30 * Math.cos(TT * 4), P[n - 1][1] - 34], [P[n - 1][0] - 4, P[n - 1][1] - 40]);
     ink(P, { w: 7 * k, color: 'rgba(255,255,255,0.85)', amt: 0.6, key: 'wl' + i });
   }
-  for (let i = 0; i < 9; i++) { const R = RNG('lv', i), x = mod(R.f() * 2400 + TT * 900, W + 600) - 300, y = R.r(200, 900) + Math.sin(TT * 5 + i) * 50, a = TT * 6 + i;
+  for (let i = 0; i < 9; i++) { const R = RNG('lv', i), x = mod(R.f() * 2400 + TT * 900, WW + 600) - 300, y = R.r(200, 900) + Math.sin(TT * 5 + i) * 50, a = TT * 6 + i;
     cut(rot(ellipsePts(x, y, 22 * k, 10 * k, 0, 12), x, y, a), i % 2 ? PAL.green : '#9ccc65', { key: 'lv' + i, sb: 4 }); }
 }
 function confetti(t0) {
   if (TT < t0) return;
   const cols = ['#f06292', PAL.yellow, '#4c8fd6', PAL.purple, '#7ad866', '#ffb347'];
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < (PORTRAIT ? 110 : 70); i++) {
     const R = RNG('cf', i), d = TT - t0, burst = d < 1.2;
     let x, y;
     if (burst) { const a = -Math.PI / 2 + R.n(1.3), v = R.r(500, 1100); x = 1180 + Math.cos(a) * v * d; y = 560 + Math.sin(a) * v * d + 700 * d * d; }
-    else { x = R.r(0, W) + Math.sin(TT * 2 + i) * 40; y = mod(R.r(0, H) + d * R.r(120, 220), H + 100) - 50; }
+    else { x = R.r(-200, WW + 200) + Math.sin(TT * 2 + i) * 40; y = mod(R.r(0, 1900) + d * R.r(120, 220), 1900) - 450; }
     const a = TT * R.r(3, 8) + i;
     cut(rot(rect(x - 9, y - 5, 18, 10, 2), x, y, a), cols[i % cols.length], { key: 'cf' + i, sb: 2, sy: 2, grain: false, tear: 0.3, shade: false });
   }
@@ -130,7 +130,7 @@ function sceneMeadow() {
   windLines(); confetti(EV.land);
   // tags: the title at the start, the end card
   if (DEFER) {
-    DEFER.push(() => { if (TT < 5.2) tag('Топа и шарик', 330, 115, 64, { rot: -0.04, s: popS(0.4) * (1 - seg(TT, 4.8, 5.1)) }); });
-    DEFER.push(() => { if (TT > EV.end) tag('Конец!', CX, H / 2 - 40, 110, { rot: 0.02, s: popS(EV.end) }); });
+    DEFER.push(() => { if (TT < 5.2) tag('Топа и шарик', PORTRAIT ? CX : 330, PORTRAIT ? SAFE.top + 110 : 115, PORTRAIT ? 76 : 64, { rot: -0.04, s: popS(0.4) * (1 - seg(TT, 4.8, 5.1)) }); });
+    DEFER.push(() => { if (TT > EV.end) tag('Конец!', CX, PORTRAIT ? H * 0.42 : H / 2 - 40, 110, { rot: 0.02, s: popS(EV.end) }); });
   }
 }
