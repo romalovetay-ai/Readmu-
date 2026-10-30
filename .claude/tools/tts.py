@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Free text-to-speech: Microsoft Edge voices (edge-tts, needs internet) or Piper (offline).
 
-  tts.py "Текст" out.mp3 [--voice ru-RU-SvetlanaNeural] [--rate +0%] [--engine edge|piper]
+  tts.py "Текст" out.mp3 [--voice ru-RU-SvetlanaNeural] [--rate=-10%] [--engine edge|piper]
 
 Edge voices for Russian: ru-RU-SvetlanaNeural (female), ru-RU-DmitryNeural (male).
 List all: edge-tts --list-voices. Piper voices: ~/.local/share/piper/<name>.onnx
@@ -17,8 +17,15 @@ def edge(text, out, voice, rate):
     ca = os.environ.get("SSL_CERT_FILE")
     if ca and os.path.exists(ca):  # behind a TLS-inspecting proxy edge-tts must trust its CA
         certifi.where = lambda: ca
-    import edge_tts
-    asyncio.run(edge_tts.Communicate(text, voice, rate=rate).save(out))
+    import edge_tts, time
+    for attempt in range(5):   # the service sometimes returns no audio for a request; a retry usually gets it
+        try:
+            asyncio.run(edge_tts.Communicate(text, voice, rate=rate).save(out))
+            return
+        except edge_tts.exceptions.NoAudioReceived:
+            if attempt == 4:
+                raise
+            time.sleep(2 * (attempt + 1))
 
 def piper(text, out, voice):
     model = os.path.join(PIPER_DIR, voice + ".onnx")

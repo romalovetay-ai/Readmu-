@@ -1,0 +1,10 @@
+{
+  "name": "topa",
+  "title": "Топа и шарик",
+  "format": { "width": 1920, "height": 1080, "fps": 24, "bpm": 120 },
+  "storyFormat": "F4 mission",
+  "style": "cut-paper",
+  "scenes": ["src/characters.js", "src/scenes.js", "src/world.js"],
+  "voice": { "file": "voice/voice.wav", "music": -12 },
+  "review": { "safe": { "top": 60, "bottom": 110, "right": 60 }, "refs": {}, "deadMax": 3.5 }
+}
