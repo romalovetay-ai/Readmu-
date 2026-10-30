@@ -9,8 +9,61 @@ def S(text, draw, **kw):
 
 
 def sleeping(ctx, x, y, st=HERO, eyes="closed", t=0, talk=False):
-    person(ctx, x, y, 0.82, 1, st, dict(lie=True, eyes=eyes, armF=(0, 0), talk=talk, pupil=(0, -1)), t)
-    rect(ctx, 150, 852, 220, 36, "#3F6FA8")
+    """Person lying on the bed, face up, under a blanket that rises with breathing."""
+    skin = st.get("skin", SKIN)
+    hx, hy = 112, 852
+    rrect(ctx, 52, 858, 110, 40, 16, "#FFFFFF")
+    circle(ctx, hx, hy, 40, skin)
+    col(ctx, st["hair"])
+    ctx.arc(hx, hy, 42, math.pi * 0.55, math.pi * 1.25)
+    ctx.close_path()
+    ctx.fill()
+    if st.get("beard"):
+        col(ctx, st["hair"])
+        ctx.arc(hx + 6, hy - 4, 36, -math.pi * 0.3, math.pi * 0.35)
+        ctx.fill()
+    circle(ctx, hx + 8, hy - 42, 7, darken(skin, 0.92))
+    for ox in (-10, 12):
+        cx, cy = hx + ox, hy - 22
+        if eyes == "closed":
+            line(ctx, cx - 7, cy, cx + 7, cy, 3, "#222222")
+        else:
+            r = 11 if eyes == "wide" else 9
+            circle(ctx, cx, cy, r, "#FFFFFF")
+            circle(ctx, cx + 2, cy - 3, 4.2, "#151515")
+            if st.get("copy"):
+                circle(ctx, cx + 2, cy - 3, 1.9, "#9BFFB0")
+    if talk and engine_vlevel() > 0.12:
+        col(ctx, "#5A2020")
+        ctx.save()
+        ctx.translate(hx + 26, hy - 4)
+        ctx.scale(0.25 + 1.0 * engine_vlevel(), 1.0)
+        ctx.arc(0, 0, 8, 0, 2 * math.pi)
+        ctx.restore()
+        ctx.fill()
+    elif eyes == "wide":
+        circle(ctx, hx + 26, hy - 4, 5, "#5A2020")
+    br = 1 + 0.035 * math.sin(t * 1.6)
+    ctx.save()
+    ctx.translate(0, 900)
+    ctx.scale(1, br)
+    ctx.translate(0, -900)
+    col(ctx, "#3F6FA8")
+    ctx.move_to(140, 900)
+    ctx.curve_to(150, 835, 210, 838, 240, 850)
+    ctx.curve_to(290, 860, 320, 845, 368, 862)
+    ctx.line_to(372, 905)
+    ctx.close_path()
+    ctx.fill()
+    line(ctx, 175, 870, 220, 880, 3, "#2F5A8C")
+    line(ctx, 260, 875, 320, 868, 3, "#2F5A8C")
+    rect(ctx, 140, 885, 40, 14, "#E8E2D6")
+    ctx.restore()
+
+
+def engine_vlevel():
+    import engine
+    return engine.VLEVEL
 
 
 def footprints(ctx, a):

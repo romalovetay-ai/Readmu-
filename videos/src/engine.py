@@ -6,6 +6,8 @@ from PIL import Image, ImageDraw, ImageFont
 W, H, FPS = 720, 1280, 30
 FONTDIR = "/tmp/claude-0/-home-user-Readmu-/ef786176-9eaf-51d0-8768-a9c5eb90af56/scratchpad/fonts/"
 _fonts = {}
+VLEVEL = 0.0       # current narration loudness 0..1, set per frame by the renderer
+SHOT_NIGHT = 0.0
 
 
 def font(name, size):
@@ -173,9 +175,21 @@ def person(ctx, x, y, s=1.0, look=1, st=None, pose=None, t=0.0):
     if pose:
         p.update(pose)
     skin = st.get("skin", SKIN)
+    if p["eyes"] == "open" and ((t + x * 0.0137) % 3.4) < 0.11:
+        p["eyes"] = "closed"
     ctx.save()
     ctx.translate(x, y)
     ctx.scale(s * look, s)
+    if not p["lie"]:
+        ctx.save()
+        ctx.scale(1, 0.18)
+        g = cairo.RadialGradient(8, 0, 5, 8, 0, 85)
+        g.add_color_stop_rgba(0, 0, 0, 0, 0.35)
+        g.add_color_stop_rgba(1, 0, 0, 0, 0)
+        ctx.set_source(g)
+        ctx.arc(8, 0, 85, 0, 2 * math.pi)
+        ctx.fill()
+        ctx.restore()
     if p["lie"]:
         ctx.rotate(-math.pi / 2)
     fat = st.get("fat", False)
@@ -223,7 +237,7 @@ def person(ctx, x, y, s=1.0, look=1, st=None, pose=None, t=0.0):
         line(ctx, 8, hip_y + 60, 8, -4, 14, "#2b2b2b")
         line(ctx, 4, -4, 24, -4, 14, shoe)
     # head
-    hx, hy = p["head_dx"], sh_y - 58
+    hx, hy = p["head_dx"], sh_y - 58 + 1.8 * math.sin(t * 2.1 + x * 0.05)
     rect(ctx, -8, sh_y - 26, 16, 20, skin)
     circle(ctx, hx, hy, 46, skin)
     hair = st["hair"]
@@ -263,6 +277,8 @@ def person(ctx, x, y, s=1.0, look=1, st=None, pose=None, t=0.0):
         circle(ctx, cx + pdx * 3.5, ey + pdy * 3, pr, "#151515")
         if st.get("copy"):
             circle(ctx, cx + pdx * 3.5, ey + pdy * 3, pr * 0.45, "#9BFFB0")
+        if e == "wide":
+            line(ctx, cx - 9, ey - 20, cx + 8, ey - 22, 3, darken(st["hair"], 0.8))
         if e == "angry":
             line(ctx, cx - 9, ey - 13 + (k * 4), cx + 9, ey - 9 - (k * 4), 3.5, "#222222")
         if e == "half":
@@ -274,8 +290,20 @@ def person(ctx, x, y, s=1.0, look=1, st=None, pose=None, t=0.0):
         poly(ctx, [(hx + 22, hy + 22), (hx + 50, hy + 18), (hx + 56, hy + 30), (hx + 26, hy + 30)], "#5A4636")
     m = p["mouth"]
     if p["talk"]:
-        m = "o" if (int(t * 9) % 3) else "flat"
-    if m == "o":
+        m = "talk"
+    if m == "talk":
+        lv = VLEVEL
+        if lv > 0.12:
+            col(ctx, "#5A2020")
+            ctx.save()
+            ctx.translate(hx + 30, hy + 31)
+            ctx.scale(1.0, 0.25 + 1.1 * lv)
+            ctx.arc(0, 0, 9, 0, 2 * math.pi)
+            ctx.restore()
+            ctx.fill()
+        else:
+            line(ctx, hx + 22, hy + 30, hx + 36, hy + 30, 3, "#5A2020")
+    elif m == "o":
         circle(ctx, hx + 30, hy + 32, 6, "#5A2020")
     elif m == "flat":
         line(ctx, hx + 22, hy + 30, hx + 36, hy + 30, 3, "#5A2020")
@@ -447,7 +475,7 @@ def building(ctx, texts, t, p):
     ctx.set_source(g)
     ctx.rectangle(-300, -300, W + 600, 1300)
     ctx.fill()
-    for cx, cy in ((120, 160), (560, 230)):
+    for cx, cy in ((120 + t * 8, 160), (560 - t * 5, 230)):
         for dx, r in ((0, 34), (34, 44), (74, 30)):
             circle(ctx, cx + dx, cy, r, "#FFFFFF", 0.85)
     rect(ctx, 40, 120, 640, 820, "#D8C9A8")
@@ -719,7 +747,8 @@ def corridor(ctx, texts, t, p):
                fig.get("pose"), t)
     if p.get("flash", True):
         g = cairo.RadialGradient(vx, vy + 150, 20, vx, vy + 150, 520)
-        g.add_color_stop_rgba(0, 1, 0.95, 0.75, 0.22)
+        fl = 0.22 * (0.85 + 0.15 * math.sin(t * 23) * math.sin(t * 7.3))
+        g.add_color_stop_rgba(0, 1, 0.95, 0.75, fl)
         g.add_color_stop_rgba(1, 1, 0.95, 0.75, 0)
         ctx.set_source(g)
         ctx.paint()
@@ -825,3 +854,15 @@ def fist_floor(ctx, texts, t, p):
             ctx.stroke()
 
 SCENES["fist_floor"] = fist_floor
+
+
+def dust(ctx, t, k=1.0):
+    """Floating dust specks caught in the light."""
+    r = random.Random(42)
+    for i in range(38):
+        x0, y0 = r.random() * W, r.random() * H
+        sp = 6 + r.random() * 14
+        x = (x0 + math.sin(t * 0.4 + i) * 30 + t * sp * 0.4) % W
+        y = (y0 - t * sp) % H
+        a = (0.15 + 0.35 * r.random()) * (0.6 + 0.4 * math.sin(t * 1.3 + i * 2.1)) * k
+        circle(ctx, x, y, 1.2 + r.random() * 2.2, "#FFF4D6", a)
