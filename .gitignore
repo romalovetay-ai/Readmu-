@@ -1,7 +1,7 @@
 node_modules/
 __pycache__/
 # animate pieces: keep sources and the shareable render, skip the heavy intermediates
-pieces/*/frames/
+pieces/*/frames*/
 pieces/*/review*/
 pieces/*/renders/*
 !pieces/*/renders/share.mp4
