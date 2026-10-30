@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Minimal openai-whisper CLI replacement backed by faster-whisper (no PyTorch).
+Supports: whisper FILE [--model M] [--language L] [--output_format srt|txt|vtt|json|all] [--output_dir D]"""
+import argparse, json, os
+from faster_whisper import WhisperModel
+
+p = argparse.ArgumentParser()
+p.add_argument("audio", nargs="+")
+p.add_argument("--model", default="small")
+p.add_argument("--language", default=None)
+p.add_argument("--output_format", "-f", default="all")
+p.add_argument("--output_dir", "-o", default=".")
+p.add_argument("--word_timestamps", default="False")
+a, _ = p.parse_known_args()
+
+def ts(t, sep=","):
+    h, r = divmod(t, 3600); m, s = divmod(r, 60)
+    return f"{int(h):02}:{int(m):02}:{int(s):02}{sep}{int(round((s % 1) * 1000)):03}"
+
+model = WhisperModel(a.model, device="cpu", compute_type="int8")
+os.makedirs(a.output_dir, exist_ok=True)
+fmts = ["srt", "vtt", "txt", "json"] if a.output_format == "all" else [a.output_format]
+for f in a.audio:
+    segs, info = model.transcribe(f, language=a.language, word_timestamps=a.word_timestamps == "True")
+    segs = list(segs)
+    base = os.path.join(a.output_dir, os.path.splitext(os.path.basename(f))[0])
+    for fmt in fmts:
+        with open(f"{base}.{fmt}", "w", encoding="utf-8") as o:
+            if fmt == "srt":
+                for i, s in enumerate(segs, 1):
+                    o.write(f"{i}\n{ts(s.start)} --> {ts(s.end)}\n{s.text.strip()}\n\n")
+            elif fmt == "vtt":
+                o.write("WEBVTT\n\n")
+                for s in segs:
+                    o.write(f"{ts(s.start, '.')} --> {ts(s.end, '.')}\n{s.text.strip()}\n\n")
+            elif fmt == "txt":
+                o.write("\n".join(s.text.strip() for s in segs) + "\n")
+            elif fmt == "json":
+                json.dump({"language": info.language, "text": "".join(s.text for s in segs),
+                           "segments": [{"id": i, "start": s.start, "end": s.end, "text": s.text,
+                                         "words": [{"word": w.word, "start": w.start, "end": w.end} for w in (s.words or [])]}
+                                        for i, s in enumerate(segs)]}, o, ensure_ascii=False)
+    print(f"Transcribed {f} ({info.language})")

@@ -1,0 +1,4 @@
+{ "lead": 0.5, "tail": 0.6, "lines": [
+  { "id": "night", "text": "Ночью маленький Лучик проснулся.", "file": "night.mp3", "after": 0.7 },
+  { "id": "morning", "text": "Луна стала солнцем, и сад расцвёл!", "file": "morning.mp3" }
+] }

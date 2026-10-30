@@ -16,7 +16,8 @@ def main():
         del args[i:i + 2]
     from faster_whisper import WhisperModel
     m = WhisperModel(model, device='cpu', compute_type='int8')
-    segs, _ = m.transcribe(args[0], word_timestamps=True, vad_filter=False, beam_size=5, language='en')
+    segs, _ = m.transcribe(args[0], word_timestamps=True, vad_filter=False, beam_size=5,
+                         language='en' if model.endswith('.en') else None)  # multilingual models auto-detect
     out = []
     for s in segs:
         for w in s.words or []:

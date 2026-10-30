@@ -1,0 +1,9 @@
+{
+  "name": "luchik",
+  "title": "Лучик",
+  "format": { "width": 1920, "height": 1080, "fps": 24, "bpm": 120, "duration": 8.0, "frames": 192 },
+  "storyFormat": "F2 morph chain",
+  "style": "cut-paper",
+  "voice": { "file": "voice/voice.wav", "music": -12 },
+  "review": { "safe": { "top": 60, "bottom": 110, "right": 60 }, "refs": {} }
+}
