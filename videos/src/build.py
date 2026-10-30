@@ -192,6 +192,22 @@ def sfx(name):
             i = int(k * 0.55 * SR)
             out[i:i + n] += lp(rng.standard_normal(n), 600) * env(n, 0.002, 30) * 0.5
         return out
+    if name == "glitch":
+        n = int(0.4 * SR)
+        t = np.arange(n) / SR
+        g = (np.sin(2 * np.pi * 37 * t) > 0).astype(float)
+        s = (np.sign(np.sin(2 * np.pi * 1800 * t * (1 + g))) * 0.3 + rng.standard_normal(n) * 0.5) * g
+        return bp(s, 500, 7000) * np.exp(-t * 6) * 0.35
+    if name == "riser":
+        n = int(2.0 * SR)
+        t = np.arange(n) / SR
+        f = 120 + 900 * (t / 2.0) ** 2
+        s = np.sin(2 * np.pi * np.cumsum(f) / SR) * 0.15 + bp(rng.standard_normal(n), 800, 6000) * 0.25
+        return s * (t / 2.0) ** 2
+    if name == "hit":
+        n = int(1.8 * SR)
+        t = np.arange(n) / SR
+        return (np.sin(2 * np.pi * 38 * t) * np.exp(-t * 2.2) + lp(rng.standard_normal(n), 2500) * np.exp(-t * 14) * 0.7) * 0.95
     if name == "breath":
         n = int(3.0 * SR)
         t = np.arange(n) / SR
@@ -397,7 +413,22 @@ def render(fi):
             q = 1 - (t - a) / d
             sx += (r.random() - 0.5) * 2 * amp * q
             sy += (r.random() - 0.5) * 2 * amp * q
+    # heartbeat: punch the zoom on every beat of a "heart" cue
+    beat = 0.0
+    for (a, name) in s["sfx"]:
+        if name == "heart":
+            a = rel(s, a)
+            for k3 in range(3):
+                for dd, amp in ((0, 1.0), (0.18, 0.6)):
+                    bt = a + k3 * 0.85 + dd
+                    if t >= bt:
+                        beat = max(beat, amp * math.exp(-(t - bt) * 9))
+    z *= 1 + 0.03 * beat
     ctx.translate(px + sx, py + sy)
+    roll = s.get("roll", 0)
+    if roll:
+        r0, r1 = roll if isinstance(roll, tuple) else (0, roll)
+        ctx.rotate(math.radians(lerp(r0, r1, ease(t / T))))
     ctx.scale(z, z)
     ctx.translate(-fx, -fy)
     engine.SHOT_NIGHT = s["night"]
@@ -417,6 +448,14 @@ def render(fi):
     g = GRAIN[fi % len(GRAIN)]
     g = np.repeat(np.repeat(g, 2, 0), 2, 1)[..., None]
     rgb += g * (0.010 + 0.008 * night)
+    red = s.get("red", 0) * (0.65 + 0.35 * math.sin(tt * 6)) + 0.5 * beat * (s.get("red", 0) > 0 or True)
+    if red > 0.01:
+        rgb[..., 0:1] += VIG * red * 0.55
+        rgb[..., 1:3] *= (1 - VIG * red * 0.35)
+    if s.get("flicker"):
+        rr = random.Random(int(tt * 14) + 7 * si)
+        if rr.random() < 0.13:
+            rgb *= 0.18
     fl = 0.0
     for a in s["flash"]:
         a = rel(s, a)
@@ -427,8 +466,24 @@ def render(fi):
     # quick fade-in from black at each cut into a new scene (2 frames) keeps cuts crisp but not harsh
     if si > 0 and t < 2 / FPS:
         rgb *= 0.55 + 0.45 * (t * FPS / 2)
+    gl = 0.0
+    for a in s.get("glitch", []):
+        a = rel(s, a)
+        if 0 <= t - a < 0.4:
+            gl = max(gl, 1 - (t - a) / 0.4)
     img = Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8)).convert("RGBA")
     texts.draw(img)
+    if gl > 0.02:
+        arr = np.array(img)
+        rr = random.Random(fi * 13)
+        sh = int(18 * gl * SC)
+        arr[..., 0] = np.roll(arr[..., 0], sh, axis=1)
+        arr[..., 2] = np.roll(arr[..., 2], -sh, axis=1)
+        for _ in range(int(2 + 5 * gl)):
+            y0 = rr.randrange(0, OH - 60)
+            hgt = rr.randrange(8, int(70 * SC))
+            arr[y0:y0 + hgt] = np.roll(arr[y0:y0 + hgt], rr.randrange(-60, 60), axis=1)
+        img = Image.fromarray(arr)
     pill(img, W / 2, 46, "СТУК В 3:07 · СЕРИЯ %d" % ep if ep < 5 else "СТУК В 3:07 · ФИНАЛ", "#111111", "#FFFFFF", 22)
     if s.get("top"):
         a, b = s["top"]
@@ -437,7 +492,10 @@ def render(fi):
         d.text((OW / 2, (130 - 20 * (1 - ap)) * SC), a, font=font("RussoOne.ttf", 56 * SC), fill="#FFFFFF",
                anchor="mm", stroke_width=int(6 * SC), stroke_fill="#000000")
         if b:
-            d.text((OW / 2, 200 * SC), b, font=font("RussoOne.ttf", 70 * SC * (0.7 + 0.3 * ap)), fill=YEL, anchor="mm",
+            fs = 70 * SC
+            while font("RussoOne.ttf", fs).getlength(b) > 660 * SC:
+                fs -= 2
+            d.text((OW / 2, 200 * SC), b, font=font("RussoOne.ttf", fs * (0.7 + 0.3 * ap)), fill=YEL, anchor="mm",
                    stroke_width=int(7 * SC), stroke_fill="#000000")
     if s.get("badge"):
         txt, c = s["badge"]

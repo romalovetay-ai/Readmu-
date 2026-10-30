@@ -144,50 +144,261 @@ VITYA = dict(body="#6E8A76", stripe="#B9C4BC", hair="#4A4038", pants="#6E8A76", 
 TENANT = dict(body="#C2662D", stripe=None, hair="#1E1E1E", pants="#3A3F55", shoe="#222222")
 
 
+OUTL = "#1C1820"
+
+EMO = {
+    # eyes, brows (raise, inner tilt), mouth, tremble, sweat, pupil scale
+    "neutral": dict(eyes="open", brows=(0, 0), mouth="line", tremble=0, sweat=False, pup=1.0),
+    "calm": dict(eyes="open", brows=(0, 0), mouth="smile_s", tremble=0, sweat=False, pup=1.0),
+    "worry": dict(eyes="open", brows=(-4, 14), mouth="frown", tremble=0.3, sweat=False, pup=0.9),
+    "fear": dict(eyes="wide", brows=(-9, 22), mouth="wavy", tremble=1.0, sweat=True, pup=0.6),
+    "terror": dict(eyes="wide", brows=(-13, 26), mouth="scream", tremble=2.0, sweat=True, pup=0.45),
+    "shock": dict(eyes="wide", brows=(-14, 6), mouth="o", tremble=0.4, sweat=False, pup=0.5),
+    "angry": dict(eyes="narrow", brows=(4, -24), mouth="teeth", tremble=0.2, sweat=False, pup=1.0),
+    "determined": dict(eyes="narrow", brows=(2, -16), mouth="line", tremble=0, sweat=False, pup=1.0),
+    "smirk": dict(eyes="half", brows=(-2, -10), mouth="smirk", tremble=0, sweat=False, pup=1.0),
+    "evil": dict(eyes="narrow", brows=(2, -26), mouth="grin", tremble=0, sweat=False, pup=0.8),
+    "tired": dict(eyes="half", brows=(-3, 16), mouth="frown", tremble=0.15, sweat=False, pup=1.0),
+    "sad": dict(eyes="half", brows=(-6, 24), mouth="frown", tremble=0, sweat=False, pup=1.0),
+    "relief": dict(eyes="closed_happy", brows=(-4, 10), mouth="smile", tremble=0, sweat=False, pup=1.0),
+    "sleep": dict(eyes="closed", brows=(0, 0), mouth="line", tremble=0, sweat=False, pup=1.0),
+    "creepy": dict(eyes="wide", brows=(0, -8), mouth="grin", tremble=0, sweat=False, pup=0.35),
+}
+
+
+def _stroke_path(ctx, w, c=OUTL):
+    col(ctx, c)
+    ctx.set_line_width(w)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    ctx.stroke()
+
+
+def ocircle(ctx, x, y, r, c, ow=3.0):
+    ctx.arc(x, y, r, 0, 2 * math.pi)
+    col(ctx, c)
+    ctx.fill_preserve()
+    _stroke_path(ctx, ow)
+
+
 def limb(ctx, x, y, a1, a2, l1, l2, w, c, stripe=None, s=1):
-    """Two-segment limb; angles in degrees from straight down, positive = forward (+x)."""
+    """Two-segment limb with dark outline; angles in degrees from straight down, positive = forward (+x)."""
     r1, r2 = math.radians(a1), math.radians(a2)
     ex, ey = x + math.sin(r1) * l1, y + math.cos(r1) * l1
     hx, hy = ex + math.sin(r2) * l2, ey + math.cos(r2) * l2
-    col(ctx, c)
-    ctx.set_line_width(w)
     ctx.set_line_cap(cairo.LINE_CAP_ROUND)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
-    ctx.move_to(x, y)
-    ctx.line_to(ex, ey)
-    ctx.line_to(hx, hy)
+    for ww, cc in ((w + 6, OUTL), (w, c)):
+        col(ctx, cc)
+        ctx.set_line_width(ww)
+        ctx.move_to(x, y)
+        ctx.line_to(ex, ey)
+        ctx.line_to(hx, hy)
+        ctx.stroke()
+    # soft shade along the back edge
+    col(ctx, (0, 0, 0), 0.16)
+    ctx.set_line_width(w * 0.35)
+    off = -w * 0.28
+    ctx.move_to(x + off, y)
+    ctx.line_to(ex + off, ey)
+    ctx.line_to(hx + off, hy)
     ctx.stroke()
     if stripe:
         col(ctx, stripe)
-        ctx.set_line_width(3.2 * s)
-        off = w * 0.18
-        ctx.move_to(x + off, y + 4 * s)
+        ctx.set_line_width(3.2)
+        off = w * 0.2
+        ctx.move_to(x + off, y + 4)
         ctx.line_to(ex + off, ey)
-        ctx.line_to(hx + off * 0.7, hy - 6 * s)
+        ctx.line_to(hx + off * 0.7, hy - 6)
         ctx.stroke()
     return hx, hy
 
 
+def ik(sx, sy, tx, ty, l1, l2, bend=1):
+    dx, dy = tx - sx, ty - sy
+    d = math.hypot(dx, dy)
+    d = max(abs(l1 - l2) + 0.5, min(l1 + l2 - 0.5, d))
+    base = math.atan2(dx, dy)
+    c = (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)
+    a1 = base - bend * math.acos(max(-1, min(1, c)))
+    ex, ey = sx + math.sin(a1) * l1, sy + math.cos(a1) * l1
+    a2 = math.atan2(tx - ex, ty - ey)
+    return math.degrees(a1), math.degrees(a2)
+
+
+def brow(ctx, cx, cy, raise_, tilt, inner_left, c, w=5):
+    # inner end is the one toward the face centre; tilt>0 lifts the inner end (fear/sadness)
+    dy = -raise_
+    L = 10
+    yi = cy + dy - tilt * 0.35
+    yo = cy + dy + tilt * 0.12
+    xi = cx - L if inner_left else cx + L
+    xo = cx + L if inner_left else cx - L
+    line(ctx, xi, yi, xo, yo, w, c)
+
+
+def face(ctx, hx, hy, st, p, t, skin):
+    emo = EMO.get(p.get("emo") or "neutral", EMO["neutral"])
+    eyes = p.get("eyes") or emo["eyes"]
+    mouth = p.get("mouth") or emo["mouth"]
+    br = p.get("brows") or emo["brows"]
+    pup = emo["pup"]
+    pdx, pdy = p.get("pupil", (1, 0))
+    blink = eyes in ("open", "narrow") and ((t + hx * 0.013 + p.get("_seed", 0)) % 3.4) < 0.11
+    ex, ey = hx + 16, hy - 5
+    hair = st["hair"]
+    for k, ox in enumerate((0, 23)):
+        cx = ex + ox
+        if eyes in ("closed", "closed_happy") or blink:
+            col(ctx, "#222222")
+            ctx.set_line_width(3.2)
+            if eyes == "closed_happy":
+                ctx.arc(cx, ey + 3, 7, math.pi * 1.1, math.pi * 1.9)
+            else:
+                ctx.arc(cx, ey - 2, 8, math.pi * 0.15, math.pi * 0.85)
+            ctx.stroke()
+        else:
+            rx, ry = (13, 15) if eyes == "wide" else (10, 12)
+            ctx.save()
+            ctx.translate(cx, ey)
+            ctx.scale(rx / 10, ry / 10)
+            ctx.arc(0, 0, 10, 0, 2 * math.pi)
+            ctx.restore()
+            col(ctx, "#FFFFFF")
+            ctx.fill_preserve()
+            _stroke_path(ctx, 2.4)
+            pr = 5.4 * pup
+            px, py = cx + pdx * 3.6, ey + pdy * 3.4
+            circle(ctx, px, py, pr, "#151515")
+            if st.get("copy"):
+                glow(ctx, px, py, 12, "#7CFFA0", 0.6)
+                circle(ctx, px, py, pr * 0.5, "#B6FFC8")
+            else:
+                circle(ctx, px + pr * 0.35, py - pr * 0.4, max(1.2, pr * 0.32), "#FFFFFF")
+            # eyelids
+            lid = {"half": 0.55, "narrow": 0.38}.get(eyes, 0)
+            if lid:
+                rect(ctx, cx - rx - 3, ey - ry - 3, 2 * rx + 6, (2 * ry + 6) * lid, skin)
+                line(ctx, cx - rx, ey - ry + (2 * ry) * lid - 1, cx + rx, ey - ry + (2 * ry) * lid - 1, 3, "#222222")
+        # brows
+        by = ey - (21 if eyes == "wide" else 17)
+        brow(ctx, cx, by, br[0], br[1] if k == 0 else br[1], inner_left=(k == 1),
+             c=darken(hair if not st.get("bald") else "#6B6B6B", 0.85))
+    # nose
+    ocircle(ctx, hx + 47, hy + 9, 7, darken(skin, 0.93), 2.2)
+    if st.get("mustache"):
+        poly(ctx, [(hx + 22, hy + 21), (hx + 50, hy + 17), (hx + 57, hy + 30), (hx + 24, hy + 30)], "#5A4636")
+    mx, my = hx + 30, hy + 31
+    if p.get("talk"):
+        lv = VLEVEL
+        if lv > 0.12:
+            mouth = "talk"
+    MC = "#4A1818"
+    if mouth == "talk":
+        ctx.save()
+        ctx.translate(mx, my)
+        ctx.scale(1.0, 0.3 + 1.1 * VLEVEL)
+        ctx.arc(0, 0, 9, 0, 2 * math.pi)
+        ctx.restore()
+        col(ctx, MC)
+        ctx.fill()
+    elif mouth == "line":
+        line(ctx, mx - 8, my, mx + 7, my, 3, MC)
+    elif mouth == "smile_s":
+        col(ctx, MC)
+        ctx.set_line_width(3)
+        ctx.arc(mx, my - 6, 8, 0.5, math.pi - 0.5)
+        ctx.stroke()
+    elif mouth == "smile":
+        col(ctx, MC)
+        ctx.set_line_width(3.4)
+        ctx.arc(mx - 1, my - 9, 12, 0.35, math.pi - 0.35)
+        ctx.stroke()
+    elif mouth == "frown":
+        col(ctx, MC)
+        ctx.set_line_width(3)
+        ctx.arc(mx, my + 9, 9, math.pi + 0.6, 2 * math.pi - 0.6)
+        ctx.stroke()
+    elif mouth == "wavy":
+        col(ctx, MC)
+        ctx.set_line_width(3)
+        ctx.move_to(mx - 10, my)
+        for i in range(1, 11):
+            ctx.line_to(mx - 10 + i * 2, my + (2.5 if i % 2 else -2.5) + math.sin(t * 30) * 0.8)
+        ctx.stroke()
+    elif mouth == "o":
+        ctx.save()
+        ctx.translate(mx, my + 2)
+        ctx.scale(0.8, 1.1)
+        ctx.arc(0, 0, 8, 0, 2 * math.pi)
+        ctx.restore()
+        col(ctx, MC)
+        ctx.fill()
+    elif mouth == "scream":
+        rrect(ctx, mx - 11, my - 6, 22, 28 + 2 * math.sin(t * 25), 9, MC)
+        rect(ctx, mx - 8, my - 5, 16, 5, "#FFFFFF")
+    elif mouth == "teeth":
+        rrect(ctx, mx - 11, my - 5, 22, 11, 4, "#FFFFFF")
+        col(ctx, MC)
+        ctx.set_line_width(2)
+        rrect(ctx, mx - 11, my - 5, 22, 11, 4)
+        ctx.stroke()
+        line(ctx, mx - 11, my, mx + 11, my, 1.5, "#888888")
+    elif mouth == "smirk":
+        col(ctx, MC)
+        ctx.set_line_width(3)
+        ctx.move_to(mx - 9, my + 1)
+        ctx.curve_to(mx - 2, my + 3, mx + 6, my + 1, mx + 11, my - 6)
+        ctx.stroke()
+    elif mouth == "grin":
+        col(ctx, MC)
+        ctx.move_to(mx - 14, my - 4)
+        ctx.curve_to(mx - 6, my + 12, mx + 8, my + 12, mx + 15, my - 7)
+        ctx.close_path()
+        ctx.fill()
+        col(ctx, "#FFFFFF")
+        ctx.move_to(mx - 12, my - 3)
+        ctx.curve_to(mx - 5, my + 3, mx + 7, my + 3, mx + 13, my - 5)
+        ctx.close_path()
+        ctx.fill()
+    # cheeks
+    if p.get("emo") in ("relief", "calm"):
+        circle(ctx, hx + 18, hy + 20, 8, "#FF8A8A", 0.35)
+
+
 def person(ctx, x, y, s=1.0, look=1, st=None, pose=None, t=0.0):
     st = st or HERO
-    p = dict(armB=(8, -10), armF=(-8, 10), legB=0, legF=0, lean=0, eyes="open", mouth="none",
-             head_dx=0, sit=False, lie=False, talk=False, pupil=(1, 0))
+    p = dict(armB=(8, -10), armF=(-8, 10), legB=0, legF=0, lean=0, emo=None, eyes=None, mouth=None, brows=None,
+             head_dx=0, head_tilt=0, sit=False, lie=False, talk=False, pupil=(1, 0), handF=None, handB=None,
+             mark=None, tremble=None, sweat=None, breath=False)
     if pose:
         p.update(pose)
+    # legacy keys from older shots
+    if p["eyes"] == "angry":
+        p["eyes"] = None
+        p["emo"] = p["emo"] or "angry"
+    if p["eyes"] == "wide" and not p["emo"]:
+        p["eyes"] = None
+        p["emo"] = "shock"
+    if p["mouth"] == "none":
+        p["mouth"] = None
+    emo = EMO.get(p["emo"] or "neutral", EMO["neutral"])
+    trem = emo["tremble"] if p["tremble"] is None else p["tremble"]
+    sweat = emo["sweat"] if p["sweat"] is None else p["sweat"]
     skin = st.get("skin", SKIN)
-    if p["eyes"] == "open" and ((t + x * 0.0137) % 3.4) < 0.11:
-        p["eyes"] = "closed"
+    if trem:
+        x += math.sin(t * 47 + x) * 1.4 * trem
+        y += math.sin(t * 39) * 0.6 * trem
     ctx.save()
     ctx.translate(x, y)
     ctx.scale(s * look, s)
     if not p["lie"]:
         ctx.save()
         ctx.scale(1, 0.18)
-        g = cairo.RadialGradient(8, 0, 5, 8, 0, 85)
-        g.add_color_stop_rgba(0, 0, 0, 0, 0.35)
+        g = cairo.RadialGradient(8, 0, 5, 8, 0, 90)
+        g.add_color_stop_rgba(0, 0, 0, 0, 0.38)
         g.add_color_stop_rgba(1, 0, 0, 0, 0)
         ctx.set_source(g)
-        ctx.arc(8, 0, 85, 0, 2 * math.pi)
+        ctx.arc(8, 0, 90, 0, 2 * math.pi)
         ctx.fill()
         ctx.restore()
     if p["lie"]:
@@ -195,128 +406,148 @@ def person(ctx, x, y, s=1.0, look=1, st=None, pose=None, t=0.0):
     fat = st.get("fat", False)
     thin = st.get("thin", False)
     tw = 46 if fat else (30 if thin else 34)
-    hip_y = -150
-    sh_y = -272
-    if p["sit"]:
-        hip_y = -95
-        sh_y = -217
+    hip_y, sh_y = (-95, -217) if p["sit"] else (-150, -272)
+    breathe = 1.5 * math.sin(t * 2.2 + x * 0.03) + (3 * math.sin(t * 9) if p["breath"] else 0)
     ctx.save()
     ctx.translate(0, hip_y)
     ctx.rotate(math.radians(p["lean"]))
     ctx.translate(0, -hip_y)
-    # back limbs
     shoe = st["shoe"]
+    sh_b = (-4, sh_y + 10 + breathe * 0.5)
+    sh_f = (6, sh_y + 10 + breathe * 0.5)
+    # back leg
     if p["sit"]:
-        lx, ly = limb(ctx, -6, hip_y, 90 + p["legB"], 0, 70, 82, 25, st["pants"], st.get("stripe"))
-        line(ctx, lx, ly, lx + 16, ly, 16, shoe)
+        lx, ly = limb(ctx, -6, hip_y, 90 + p["legB"], 0, 70, 82, 25, darken(st["pants"], 0.85), st.get("stripe"))
+        line(ctx, lx - 2, ly, lx + 18, ly, 18, OUTL)
+        line(ctx, lx, ly, lx + 16, ly, 13, shoe)
     elif not st.get("skirt"):
-        lx, ly = limb(ctx, -6, hip_y, p["legB"], p["legB"] * 0.3, 75, 72, 25, st["pants"], st.get("stripe"))
-        line(ctx, lx - 4, ly, lx + 14, ly, 15, shoe)
+        lx, ly = limb(ctx, -6, hip_y, p["legB"], p["legB"] * 0.3, 75, 72, 25, darken(st["pants"], 0.85),
+                      st.get("stripe"))
+        line(ctx, lx - 6, ly, lx + 16, ly, 18, OUTL)
+        line(ctx, lx - 4, ly, lx + 14, ly, 13, shoe)
     else:
         line(ctx, -6, hip_y + 60, -6, -4, 14, "#2b2b2b")
         line(ctx, -10, -4, 8, -4, 14, shoe)
-    ax, ay = limb(ctx, -4, sh_y + 10, p["armB"][0], p["armB"][1], 62, 60, 20, darken(st["body"], 0.85),
-                  st.get("stripe"))
-    circle(ctx, ax, ay, 11, darken(skin, 0.9))
+    # back arm
+    if p["handB"]:
+        a1, a2 = ik(sh_b[0], sh_b[1], p["handB"][0], p["handB"][1], 62, 60, 1)
+    else:
+        a1, a2 = p["armB"]
+    ax, ay = limb(ctx, sh_b[0], sh_b[1], a1, a2, 62, 60, 20, darken(st["body"], 0.82), st.get("stripe"))
+    ocircle(ctx, ax, ay, 11, darken(skin, 0.9), 2.5)
     # torso
     if st.get("skirt"):
         poly(ctx, [(-tw, sh_y + 20), (tw, sh_y + 20), (tw + 18, hip_y + 70), (-tw - 18, hip_y + 70)], st["pants"])
-    rrect(ctx, -tw, sh_y - 12, tw * 2, hip_y - sh_y + 26, 18, st["body"])
-    if st.get("stripe") and not st.get("copy_faded"):
-        rect(ctx, tw * 0.15, sh_y - 8, 4, 40, st["stripe"], 0.9)
-    if st.get("scarf"):
-        pass
+    rrect(ctx, -tw, sh_y - 12 + breathe, tw * 2, hip_y - sh_y + 26 - breathe, 18)
+    col(ctx, st["body"])
+    ctx.fill_preserve()
+    _stroke_path(ctx, 3)
+    ctx.save()
+    rrect(ctx, -tw, sh_y - 12 + breathe, tw * 2, hip_y - sh_y + 26 - breathe, 18)
+    ctx.clip()
+    rect(ctx, -tw, sh_y - 20, tw * 0.75, hip_y - sh_y + 40, (0, 0, 0), 0.14)
+    rect(ctx, tw * 0.55, sh_y - 20, tw * 0.3, hip_y - sh_y + 40, (1, 1, 1), 0.07)
+    ctx.restore()
+    if st.get("stripe"):
+        rect(ctx, tw * 0.15, sh_y - 8 + breathe, 4, 40, st["stripe"], 0.9)
+    if fat:
+        line(ctx, -tw + 6, hip_y - 10, tw - 4, hip_y - 10, 5, darken(st["body"], 0.7))
     # front leg
     if p["sit"]:
         lx, ly = limb(ctx, 6, hip_y, 90 + p["legF"], 0, 70, 82, 26, st["pants"], st.get("stripe"))
-        line(ctx, lx, ly, lx + 18, ly, 16, shoe)
+        line(ctx, lx - 2, ly, lx + 20, ly, 18, OUTL)
+        line(ctx, lx, ly, lx + 18, ly, 13, shoe)
     elif not st.get("skirt"):
         lx, ly = limb(ctx, 6, hip_y, p["legF"], p["legF"] * 0.3, 75, 72, 26, st["pants"], st.get("stripe"))
-        line(ctx, lx - 4, ly, lx + 16, ly, 16, shoe)
+        line(ctx, lx - 6, ly, lx + 18, ly, 18, OUTL)
+        line(ctx, lx - 4, ly, lx + 16, ly, 13, shoe)
     else:
         line(ctx, 8, hip_y + 60, 8, -4, 14, "#2b2b2b")
         line(ctx, 4, -4, 24, -4, 14, shoe)
     # head
-    hx, hy = p["head_dx"], sh_y - 58 + 1.8 * math.sin(t * 2.1 + x * 0.05)
-    rect(ctx, -8, sh_y - 26, 16, 20, skin)
-    circle(ctx, hx, hy, 46, skin)
+    hx, hy = p["head_dx"], sh_y - 58 + breathe + 1.2 * math.sin(t * 2.1 + x * 0.05)
+    rect(ctx, -8, sh_y - 26 + breathe, 16, 20, darken(skin, 0.9))
+    ctx.save()
+    ctx.translate(hx, hy)
+    ctx.rotate(math.radians(p["head_tilt"]))
+    ctx.translate(-hx, -hy)
     hair = st["hair"]
     if st.get("scarf"):
         col(ctx, st["scarf"])
-        ctx.arc(hx, hy, 52, math.pi * 0.95, math.pi * 2.05)
+        ctx.arc(hx, hy, 53, math.pi * 0.95, math.pi * 2.05)
         ctx.fill()
-        poly(ctx, [(hx - 50, hy + 4), (hx - 30, hy + 10), (hx - 46, hy + 52)], st["scarf"])
+        poly(ctx, [(hx - 50, hy + 4), (hx - 30, hy + 10), (hx - 46, hy + 54)], st["scarf"])
+    ocircle(ctx, hx, hy, 46, skin, 3)
+    # ear
+    ocircle(ctx, hx - 14, hy + 4, 10, darken(skin, 0.95), 2.2)
+    if st.get("scarf"):
+        col(ctx, st["scarf"])
+        ctx.arc(hx, hy, 50, math.pi * 1.0, math.pi * 1.98)
+        ctx.close_path()
+        ctx.fill()
+        rect(ctx, hx - 50, hy - 6, 22, 30, st["scarf"])
+        circle(ctx, hx + 46, hy - 16, 6, darken(st["scarf"], 0.8))
     elif st.get("bald"):
         col(ctx, hair)
-        ctx.arc(hx, hy, 47, math.pi * 0.75, math.pi * 1.05)
-        ctx.arc_negative(hx, hy, 38, math.pi * 1.05, math.pi * 0.75)
+        ctx.arc(hx, hy, 47, math.pi * 0.72, math.pi * 1.08)
+        ctx.arc_negative(hx, hy, 36, math.pi * 1.08, math.pi * 0.72)
+        ctx.fill()
+        col(ctx, (1, 1, 1), 0.35)
+        ctx.arc(hx + 10, hy - 30, 9, 0, 2 * math.pi)
         ctx.fill()
     else:
         col(ctx, hair)
-        ctx.arc(hx, hy, 48, math.pi * 1.0, math.pi * 1.95)
+        ctx.move_to(hx - 48, hy + 14)
+        ctx.line_to(hx - 50, hy - 6)
+        ctx.curve_to(hx - 46, hy - 50, hx + 10, hy - 66, hx + 44, hy - 30)
+        ctx.line_to(hx + 36, hy - 22)
+        ctx.line_to(hx + 26, hy - 30)
+        ctx.line_to(hx + 14, hy - 22)
+        ctx.line_to(hx - 2, hy - 30)
+        ctx.curve_to(hx - 18, hy - 22, hx - 26, hy - 6, hx - 28, hy + 16)
         ctx.close_path()
-        ctx.fill()
-        poly(ctx, [(hx - 48, hy - 2), (hx - 30, hy - 30), (hx - 30, hy + 14), (hx - 46, hy + 16)], hair)
+        ctx.fill_preserve()
+        _stroke_path(ctx, 2.6)
+        if st.get("copy"):
+            pass
     if st.get("beard"):
         col(ctx, hair)
-        ctx.arc(hx + 6, hy + 8, 42, math.pi * 0.05, math.pi * 0.95)
+        ctx.move_to(hx - 18, hy + 4)
+        ctx.curve_to(hx - 14, hy + 56, hx + 40, hy + 62, hx + 46, hy + 22)
+        ctx.line_to(hx + 40, hy + 22)
+        ctx.curve_to(hx + 30, hy + 40, hx + 18, hy + 22, hx + 10, hy + 26)
+        ctx.close_path()
         ctx.fill()
-    # eyes
-    ex = hx + 18
-    ey = hy - 4
-    e = p["eyes"]
-    pdx, pdy = p["pupil"]
-    for k, (ox, rr) in enumerate(((0, 10.5), (22, 10.5))):
-        cx = ex + ox
-        if e == "closed":
-            line(ctx, cx - 7, ey + 2, cx + 7, ey + 2, 3, "#222222")
-            continue
-        r = rr * (1.35 if e == "wide" else 1.0)
-        circle(ctx, cx, ey, r, "#FFFFFF")
-        pr = 4.6 if e != "wide" else 3.8
-        circle(ctx, cx + pdx * 3.5, ey + pdy * 3, pr, "#151515")
-        if st.get("copy"):
-            circle(ctx, cx + pdx * 3.5, ey + pdy * 3, pr * 0.45, "#9BFFB0")
-        if e == "wide":
-            line(ctx, cx - 9, ey - 20, cx + 8, ey - 22, 3, darken(st["hair"], 0.8))
-        if e == "angry":
-            line(ctx, cx - 9, ey - 13 + (k * 4), cx + 9, ey - 9 - (k * 4), 3.5, "#222222")
-        if e == "half":
-            rect(ctx, cx - r - 1, ey - r - 1, 2 * r + 2, r + 1, skin)
-            line(ctx, cx - r, ey, cx + r, ey, 2.5, "#333333")
-    # nose
-    circle(ctx, hx + 46, hy + 10, 7, darken(skin, 0.92))
-    if st.get("mustache"):
-        poly(ctx, [(hx + 22, hy + 22), (hx + 50, hy + 18), (hx + 56, hy + 30), (hx + 26, hy + 30)], "#5A4636")
-    m = p["mouth"]
-    if p["talk"]:
-        m = "talk"
-    if m == "talk":
-        lv = VLEVEL
-        if lv > 0.12:
-            col(ctx, "#5A2020")
-            ctx.save()
-            ctx.translate(hx + 30, hy + 31)
-            ctx.scale(1.0, 0.25 + 1.1 * lv)
-            ctx.arc(0, 0, 9, 0, 2 * math.pi)
-            ctx.restore()
-            ctx.fill()
-        else:
-            line(ctx, hx + 22, hy + 30, hx + 36, hy + 30, 3, "#5A2020")
-    elif m == "o":
-        circle(ctx, hx + 30, hy + 32, 6, "#5A2020")
-    elif m == "flat":
-        line(ctx, hx + 22, hy + 30, hx + 36, hy + 30, 3, "#5A2020")
-    elif m == "smile":
-        col(ctx, "#5A2020")
-        ctx.set_line_width(3)
-        ctx.arc(hx + 28, hy + 22, 10, 0.2, math.pi - 0.6)
-        ctx.stroke()
-    elif m == "scream":
-        rrect(ctx, hx + 22, hy + 24, 16, 20, 7, "#5A2020")
-    # front arm
-    ax, ay = limb(ctx, 6, sh_y + 10, p["armF"][0], p["armF"][1], 62, 60, 21, st["body"], st.get("stripe"))
-    circle(ctx, ax, ay, 12, skin)
+    face(ctx, hx, hy, st, p, t, skin)
+    if sweat:
+        ph = (t * 0.9 + x * 0.01) % 1.0
+        dy = ph * 40
+        a = 1 - ph
+        col(ctx, "#9FD8FF", a)
+        sx0, sy0 = hx - 30, hy - 26 + dy
+        ctx.move_to(sx0, sy0 - 10)
+        ctx.curve_to(sx0 + 7, sy0, sx0 + 6, sy0 + 8, sx0, sy0 + 8)
+        ctx.curve_to(sx0 - 6, sy0 + 8, sx0 - 7, sy0, sx0, sy0 - 10)
+        ctx.fill()
+    if p["mark"]:
+        k = clamp(p.get("mark_t", 1.0))
+        sz = 34 * (0.4 + 0.6 * ease(k * 3))
+        col(ctx, "#FFD21E" if p["mark"] == "!" else "#FFFFFF")
+        if p["mark"] == "!":
+            rrect(ctx, hx + 6 - sz * 0.16, hy - 110 - sz, sz * 0.32, sz, sz * 0.15, "#FFD21E")
+            circle(ctx, hx + 6, hy - 98, sz * 0.18, "#FFD21E")
+        for i in range(3):
+            ang = -math.pi / 2 + (i - 1) * 0.5
+            line(ctx, hx + math.cos(ang) * 64, hy + math.sin(ang) * 64, hx + math.cos(ang) * 80,
+                 hy + math.sin(ang) * 80, 4, "#FFFFFF", 0.8)
+    ctx.restore()
+    # front arm (drawn last, over the body)
+    if p["handF"]:
+        a1, a2 = ik(sh_f[0], sh_f[1], p["handF"][0], p["handF"][1], 62, 60, 1)
+    else:
+        a1, a2 = p["armF"]
+    ax, ay = limb(ctx, sh_f[0], sh_f[1], a1, a2, 62, 60, 21, st["body"], st.get("stripe"))
+    ocircle(ctx, ax, ay, 12, skin, 2.6)
     ctx.restore()
     ctx.restore()
     return ax, ay
@@ -399,8 +630,9 @@ def wardrobe(ctx, x, y, w=190, h=420, shake=0.0, open_=0.0, t=0):
     dx = math.sin(t * 60) * shake * 6
     ctx.save()
     ctx.translate(dx, 0)
+    rect(ctx, x + 10, y + 10, w, h, (0, 0, 0), 0.25)
     rect(ctx, x, y, w, h, "#6B4428")
-    rect(ctx, x + 8, y + 8, w - 16, h - 16, "#3A2416")
+    rect(ctx, x + 8, y + 8, w - 16, h - 16, "#0A0604")
     if open_ < 0.99:
         dw = (w / 2 - 10) * (1 - open_)
         rect(ctx, x + 10, y + 10, dw, h - 30, "#7E5233")
@@ -409,6 +641,12 @@ def wardrobe(ctx, x, y, w=190, h=420, shake=0.0, open_=0.0, t=0):
             circle(ctx, x + 10 + dw - 12, y + h / 2, 5, "#D6B37A")
             circle(ctx, x + w - 10 - dw + 12, y + h / 2, 5, "#D6B37A")
     rect(ctx, x - 6, y - 14, w + 12, 16, "#5A3820")
+    col(ctx, "#1C1820")
+    ctx.set_line_width(3)
+    ctx.rectangle(x, y, w, h)
+    ctx.stroke()
+    rect(ctx, x + 6, y + h, 18, 14, "#3A2416")
+    rect(ctx, x + w - 24, y + h, 18, 14, "#3A2416")
     ctx.restore()
 
 
@@ -433,8 +671,42 @@ def room(ctx, texts, t, p):
     night = p.get("night", True)
     wall = "#C9B48E" if not p.get("green") else "#9DB59A"
     wall_pattern(ctx, -200, -200, W + 400, 1120, wall, darken(wall, 0.75))
-    rect(ctx, -200, 880, W + 400, 14, "#6B4428")
+    g = cairo.LinearGradient(0, -200, 0, 420)
+    g.add_color_stop_rgba(0, 0, 0, 0, 0.35)
+    g.add_color_stop_rgba(1, 0, 0, 0, 0)
+    ctx.set_source(g)
+    ctx.rectangle(-200, -200, W + 400, 620)
+    ctx.fill()
+    # cracks, a framed picture and a socket
+    col(ctx, darken(wall, 0.55))
+    ctx.set_line_width(2)
+    ctx.move_to(610, 40); ctx.line_to(590, 90); ctx.line_to(600, 120); ctx.line_to(575, 170); ctx.stroke()
+    ctx.move_to(590, 90); ctx.line_to(560, 100); ctx.stroke()
+    rect(ctx, 506, 262, 126, 96, "#3A2A1E")
+    rect(ctx, 514, 270, 110, 80, "#8FA6B0")
+    poly(ctx, [(514, 350), (550, 300), (580, 330), (600, 305), (624, 350)], "#5E7A64")
+    circle(ctx, 600, 288, 8, "#F4E3A1")
+    rrect(ctx, 296, 818, 26, 34, 4, "#EDE6D8")
+    circle(ctx, 304, 832, 2.5, "#555555"); circle(ctx, 314, 832, 2.5, "#555555")
+    rect(ctx, -200, 868, W + 400, 26, "#5A3820")
+    rect(ctx, -200, 868, W + 400, 4, "#7E5233")
     floorboards(ctx, -200, 894, W + 400, 700)
+    g = cairo.LinearGradient(0, 894, 0, 960)
+    g.add_color_stop_rgba(0, 0, 0, 0, 0.35)
+    g.add_color_stop_rgba(1, 0, 0, 0, 0)
+    ctx.set_source(g)
+    ctx.rectangle(-200, 894, W + 400, 70)
+    ctx.fill()
+    if night and not p.get("green"):
+        col(ctx, "#BFD4FF", 0.10)
+        ctx.move_to(110, 1000); ctx.line_to(330, 1000); ctx.line_to(420, 1240); ctx.line_to(150, 1240)
+        ctx.close_path(); ctx.fill()
+        g = cairo.LinearGradient(70, 230, 300, 1100)
+        g.add_color_stop_rgba(0, 0.75, 0.83, 1, 0.10)
+        g.add_color_stop_rgba(1, 0.75, 0.83, 1, 0.0)
+        ctx.set_source(g)
+        ctx.move_to(70, 530); ctx.line_to(300, 530); ctx.line_to(420, 1240); ctx.line_to(150, 1240)
+        ctx.close_path(); ctx.fill()
     window(ctx, 70, 230, 230, 300, night=night, t=t)
     if p.get("carpet", True):
         poly(ctx, [(150, 1010), (600, 1010), (660, 1140), (90, 1140)], "#9E2B2B")
@@ -451,11 +723,19 @@ def room(ctx, texts, t, p):
                  "#4A4A50")
             line(ctx, hx - 60, hy - 170, hx + 60, hy - 170, 6, "#777777")
             texts.add(ctx, hx, hy - 120, "НЕ ОТВЕЧАЙ", 26, "#D9D9D9", "RussoOne.ttf", rot=0, alpha=0.8)
+            if p.get("fingers") is not None:
+                fingers(ctx, hx - 60, hy - 30, t, p["fingers"], 0.7)
+        elif p.get("fingers") is not None:
+            pass
         else:
             poly(ctx, [(hx - 105, hy - 40), (hx + 105, hy - 40), (hx + 130, hy + 40), (hx - 130, hy + 40)],
                  "#4A4A50")
             line(ctx, hx - 40, hy, hx + 40, hy, 7, "#777777")
+            if p.get("fingers") is not None:
+                fingers(ctx, hx - 70, hy + 44, t, p["fingers"], 0.55)
     wardrobe(ctx, 480, 460, shake=p.get("shake", 0), open_=p.get("wopen", 0), t=t)
+    if p.get("weyes"):
+        shadow_eyes(ctx, 575, 610, t + 1.0, 1.1, p.get("weyes_c", "#FF3B30"))
     bed(ctx, 40, 960, 330)
     rect(ctx, 380, 870, 110, 90, "#6B4428")
     line(ctx, 390, 915, 480, 915, 3, "#4A2E1A")
@@ -568,6 +848,9 @@ def hatch_close(ctx, texts, t, p):
         for k in range(5):
             line(ctx, 190 + k * 16, 760, 200 + k * 16, 820, 4, "#C9C9C9", 0.7)
         line(ctx, 180, 790, 280, 785, 4, "#C9C9C9", 0.7)
+    if p.get("fingers") is not None:
+        rect(ctx, 125, 858, 470, 10, "#050505")
+        fingers(ctx, 230, 866, t, p["fingers"], 1.8)
     if rev < 1:
         # carpet being pulled away to the right
         off = ease(rev) * 900
@@ -622,12 +905,14 @@ def granny_scene(ctx, texts, t, p):
     rect(ctx, 415, 375, 220, 565, "#1C140F")
     glow(ctx, 520, 600, 260, "#FFE7A0", 0.25)
     texts.add(ctx, 525, 330, "КВ. 2", 22, "#2A3A33", "RussoOne.ttf")
-    person(ctx, 500, 935, 1.0, -1, GRANNY, dict(talk=p.get("talk", False), eyes=p.get("geyes", "open"),
-                                                 armF=(-30, -60), pupil=(1, 0)), t)
-    person(ctx, 170, 935, 1.0, 1, HERO, dict(armF=(40, 30) if p.get("show") else (-8, 10),
-                                              eyes="wide" if p.get("scared") else "open"), t)
+    gemo = p.get("gemo") or ("shock" if p.get("geyes") == "wide" else "worry")
+    person(ctx, 500, 935, 1.0, -1, GRANNY, dict(talk=p.get("talk", False), emo=gemo,
+                                                 handF=p.get("ghand", (40, -250)), pupil=(1, 0)), t)
+    hemo = p.get("hemo") or ("fear" if p.get("scared") else "worry")
+    person(ctx, 170, 935, 1.0, 1, HERO, dict(handF=(95, -215) if p.get("show") else None, emo=hemo), t)
     if p.get("show"):
-        rrect(ctx, 225, 640, 60, 80, 4, "#1F3A5F")
+        rrect(ctx, 245, 680, 64, 84, 5, "#1F3A5F")
+        rect(ctx, 250, 755, 54, 6, "#EEEEEE")
 
 
 def phone_scene(ctx, texts, t, p):
@@ -773,10 +1058,10 @@ def below(ctx, texts, t, p):
                 hit = 1
     reach = lerp(-60, 175, ease(fist)) - hit * 14
     st = p.get("st", HERO)
-    person(ctx, 330, 1080, 1.05, 1, st, dict(armF=(reach, reach), eyes=p.get("eyes", "angry"), pupil=(0.6, -1)),
-           t)
+    emo = p.get("emo") or {"angry": "determined", "wide": "fear"}.get(p.get("eyes"), "determined")
+    person(ctx, 330, 1080, 1.05, 1, st, dict(armF=(reach, reach), emo=emo, pupil=(0.6, -1)), t)
     if p.get("vitya"):
-        person(ctx, 120, 1080, 0.95, 1, VITYA, dict(eyes="wide", armF=(30, 40), mouth="o"), t)
+        person(ctx, 120, 1080, 0.95, 1, VITYA, dict(emo=p.get("vemo", "fear"), handF=(40, -300)), t)
     if knock_t is not None:
         for k in range(p.get("knocks", 3)):
             tt = t - knock_t - k * p.get("gap", 0.5)
@@ -792,14 +1077,15 @@ def below(ctx, texts, t, p):
 def vitya_close(ctx, texts, t, p):
     corridor(ctx, texts, 0, dict(depth=2.3, tally=True, flash=False))
     rect(ctx, -300, -300, W + 600, 2000, "#000000", 0.35)
-    person(ctx, 300, 1500, 2.1, 1, VITYA, dict(talk=p.get("talk", True), eyes=p.get("eyes", "wide"),
+    emo = p.get("emo") or {"wide": "fear", "half": "tired", "angry": "angry"}.get(p.get("eyes"), "fear")
+    person(ctx, 300, 1500, 2.1, 1, VITYA, dict(talk=p.get("talk", True), emo=emo,
                                                 armF=(p.get("arm", 20), p.get("arm2", 30))), t)
 
 
 def landlord_close(ctx, texts, t, p):
     building(ctx, texts, 0, {})
     rect(ctx, -300, -300, W + 600, 2000, "#000000", 0.15)
-    person(ctx, 300, 1530, 2.2, 1, LANDLORD, dict(talk=p.get("talk", True), eyes=p.get("eyes", "half"),
+    person(ctx, 300, 1530, 2.2, 1, LANDLORD, dict(talk=p.get("talk", True), emo=p.get("emo", "smirk"),
                                                    armF=(50, 70)), t)
     if p.get("keys"):
         kx, ky = 560 + math.sin(t * 4) * 10, 960
@@ -866,3 +1152,65 @@ def dust(ctx, t, k=1.0):
         y = (y0 - t * sp) % H
         a = (0.15 + 0.35 * r.random()) * (0.6 + 0.4 * math.sin(t * 1.3 + i * 2.1)) * k
         circle(ctx, x, y, 1.2 + r.random() * 2.2, "#FFF4D6", a)
+
+
+def shadow_eyes(ctx, x, y, t, s=1.0, c="#FF3B30", a=1.0):
+    """Pair of glowing eyes in the dark that blink now and then."""
+    if ((t + x * 0.01) % 4.1) < 0.12:
+        return
+    for dx in (-16, 16):
+        glow(ctx, x + dx * s, y, 34 * s, c, 0.55 * a)
+        ctx.save()
+        ctx.translate(x + dx * s, y)
+        ctx.scale(1.0 * s, 0.55 * s)
+        ctx.arc(0, 0, 9, 0, 2 * math.pi)
+        ctx.restore()
+        col(ctx, "#FFFFFF", 0.9 * a)
+        ctx.fill()
+        circle(ctx, x + dx * s, y, 3.2 * s, c, a)
+
+
+def fingers(ctx, x, y, t, k, s=1.0):
+    """Long grey fingers sliding out of a gap; k = 0..1 how far out."""
+    k = clamp(k)
+    if k <= 0:
+        return
+    for i in range(4):
+        L = (70 + 18 * (i in (1, 2))) * k * s
+        fx = x + i * 26 * s
+        wig = math.sin(t * 3 + i) * 6 * s
+        col(ctx, "#08080A")
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        ctx.set_line_width(17 * s)
+        ctx.move_to(fx, y)
+        ctx.curve_to(fx + wig, y + L * 0.4, fx + wig * 1.5, y + L * 0.7, fx + wig * 0.5 + 6 * s, y + L)
+        ctx.stroke()
+        col(ctx, "#5C5C66")
+        ctx.set_line_width(13 * s)
+        ctx.move_to(fx, y)
+        ctx.curve_to(fx + wig, y + L * 0.4, fx + wig * 1.5, y + L * 0.7, fx + wig * 0.5 + 6 * s, y + L)
+        ctx.stroke()
+        col(ctx, "#8A8A96")
+        ctx.set_line_width(4 * s)
+        ctx.move_to(fx - 2 * s, y)
+        ctx.curve_to(fx + wig - 2 * s, y + L * 0.4, fx + wig * 1.5 - 2 * s, y + L * 0.7, fx + wig * 0.5 + 4 * s, y + L)
+        ctx.stroke()
+        circle(ctx, fx + wig * 0.5 + 6 * s, y + L, 5 * s, "#9A9AA2")
+
+
+def sitting_bed(ctx, st, emo, t, pose=None):
+    """Person sitting bolt upright in bed, legs under the blanket."""
+    p = dict(sit=True, emo=emo, legF=0, legB=0, handF=(70, -200), handB=(60, -180))
+    if pose:
+        p.update(pose)
+    person(ctx, 110, 900, 0.86, 1, st, p, t)
+    col(ctx, "#3F6FA8")
+    ctx.move_to(150, 905)
+    ctx.curve_to(160, 820, 240, 812, 290, 836)
+    ctx.curve_to(320, 846, 345, 850, 368, 860)
+    ctx.line_to(372, 905)
+    ctx.close_path()
+    ctx.fill_preserve()
+    col(ctx, "#1C1820")
+    ctx.set_line_width(3)
+    ctx.stroke()
