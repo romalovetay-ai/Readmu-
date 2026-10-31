@@ -23,6 +23,8 @@
 | `scrapecreators-api`, `outlier-post-finder`, `trend-discovery`, `comment-mining`, `competitor-social-research`, `creator-profile-teardown`, `audience-research`, `social-listening-brief`, `transcript-intelligence`, `content-repurposing`, `influencer-prospecting`, `ad-library-teardown`, `product-demand-research` | [ScrapeCreators/social-media-research-skills](https://github.com/ScrapeCreators/social-media-research-skills) | MIT | Аналитика ниши, аутлайеры, тренды, комментарии. Полный режим — с ключом `SCRAPECREATORS_API_KEY` (платно) |
 | `brand-review`, `campaign-plan`, `competitive-brief`, `content-creation`, `draft-content`, `email-sequence`, `performance-report`, `seo-audit` | [anthropics/knowledge-work-plugins](https://github.com/anthropics/knowledge-work-plugins) (marketing) | Apache 2.0 | Посты, контент-план, отчёты, тон бренда |
 | `edit-video`, `make-a-video`, `video-storytelling`, `hyperframes*`, `gsap`, `style-library`, `short-form-edit`, `short-form-video`, `cut-silences`, `cut-mistakes`, `motion-showreel`, `website-to-hyperframes` | [nateherkai/herk-edit-kit](https://github.com/nateherkai/herk-edit-kit) | MIT | Живая моушн-графика HyperFrames, 400+ карточек стилей, нарезка, Shorts. Скрипты и библиотека стилей — в `kits/herk-edit-kit` |
+| `motion-styles` | [kevinbadi/claude-motion-faceless-skills](https://github.com/kevinbadi/claude-motion-faceless-skills) | MIT | 74 стиля анимированных объяснялок для безликих каналов |
+| `kits/forja-video` (набор, не скил) | [LucasSKrewer/forja-video](https://github.com/LucasSKrewer/forja-video) | MIT | Свободные картинки и музыка с Wikimedia Commons, фоновые частицы, апскейл |
 
 ## Подготовка
 
@@ -39,6 +41,7 @@ bash .claude/setup.sh
 - `tts.py "Текст" out.mp3 [--voice ru-RU-DmitryNeural] [--engine piper]` — бесплатная озвучка. Голоса edge-tts: `ru-RU-SvetlanaNeural`, `ru-RU-DmitryNeural` (нужен интернет). Piper работает без интернета: `ru_RU-irina-medium`, `ru_RU-dmitri-medium`.
 - `youtube.py` — загрузка роликов, превью, субтитры, расписание публикации, плейлисты, статистика, комментарии, YouTube Analytics и удержание. Секреты: `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN` (как получить — в начале файла).
 - `telegram.py` — посты, фото, видео, альбомы, опросы, закрепы, статистика канала. Секреты: `TG_BOT_TOKEN`, `TG_CHANNEL`.
+- `rembg` (ставит `setup.sh`) — вырезает персонажа или предмет из фона: `rembg i in.png out.png`.
 - `whisper` — команда, совместимая с openai-whisper, но на faster-whisper, без PyTorch. Нужна скилу `video-editing`.
 
 ## Что исправлено в скилах

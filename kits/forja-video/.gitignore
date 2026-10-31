@@ -1,0 +1,19 @@
+# Identidade do canal — a marca é sua, não vai no repo.
+# Ponha o ícone do SEU canal em identidade/icone.jpg (ver README).
+identidade/
+
+# Workspaces de episódio e saídas de mídia
+scripts/_tmp_*/
+scripts/storyboard.json
+scripts/storyboard-*.json
+scripts/shorts-*.json
+*.mp3
+*.srt
+*.wav
+!scripts/assets/particulas.mp4
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/

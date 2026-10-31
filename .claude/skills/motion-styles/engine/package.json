@@ -1,0 +1,7 @@
+{
+  "name": "motion-styles-engine",
+  "private": true,
+  "type": "module",
+  "description": "Headless renderer for the Creator OS motion-style suite (canvas -> Chrome -> ffmpeg).",
+  "dependencies": { "puppeteer-core": "^24.0.0" }
+}

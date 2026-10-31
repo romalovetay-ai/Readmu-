@@ -1,0 +1,47 @@
+{
+  "narracao": "tesla-narracao-v2.mp3",
+  "saida": "nikola-tesla-v2.mp4",
+  "titulo": "O CRONISTA",
+  "subtitulo": "Nikola Tesla",
+  "nome": "NIKOLA TESLA",
+  "tagline": "Glória e Ruína — ascensão e queda de quem mudou a história",
+  "stinger_em": 200.4,
+  "silencio": [306.0, 324.0],
+  "thumb_img": "tesla-jovem",
+  "thumb_titulo": "NIKOLA TESLA",
+  "thumb_sub": "Glória e Ruína",
+  "obs": "v2: reordenado pros beats do roteiro v2 (cold open gap -> ascensao -> guerra -> aposta/peripeteia -> queda -> desfecho). peso = duracao relativa (montador escala pra narracao). Tesla e moderno: conferir creditos.md arquivo por arquivo (PD pre-~1929).",
+  "cenas": [
+    {"slug": "colorado-springs", "video": "raio.mp4", "busca": "Tesla Colorado Springs magnifying transmitter", "peso": 8},
+    {"slug": "feira-chicago",        "busca": "Court of Honor World's Columbian Exposition 1893",      "peso": 5},
+    {"slug": "pombos",               "busca": "pigeons city square",                         "peso": 8},
+
+    {"slug": "mapa-balcas",          "busca": "Austria-Hungary map 1880",                    "peso": 9},
+    {"slug": "tesla-jovem",          "busca": "Nikola Tesla Sarony portrait",                "peso": 9},
+    {"slug": "motor-ac",             "busca": "Tesla induction motor",                       "peso": 18},
+    {"slug": "porto-ny",             "busca": "Castle Garden New York immigrants",           "peso": 14},
+    {"slug": "edison",               "busca": "Thomas Edison 1880s portrait",                "peso": 20},
+    {"slug": "tesla-jovem",          "busca": "Nikola Tesla Sarony portrait",                "peso": 10},
+
+    {"slug": "westinghouse",         "busca": "George Westinghouse portrait",                "peso": 16},
+    {"slug": "cadeira-eletrica",     "busca": "electric chair Sing Sing",                    "peso": 18},
+    {"slug": "feira-chicago",        "busca": "Court of Honor World's Columbian Exposition 1893",      "peso": 13},
+    {"slug": "niagara",              "busca": "Niagara Falls Adams Power Plant 1895",         "peso": 14},
+    {"slug": "tesla-jovem",          "busca": "Nikola Tesla Sarony portrait",                "peso": 14},
+
+    {"slug": "colorado-springs",     "busca": "Tesla Colorado Springs magnifying transmitter","peso": 14},
+    {"slug": "wardenclyffe",         "busca": "intitle:Wardenclyffe tower",                  "peso": 14},
+    {"slug": "jp-morgan",            "busca": "John Pierpont Morgan financier",              "peso": 9},
+    {"slug": "marconi",              "busca": "Guglielmo Marconi 1901",                      "peso": 16},
+    {"slug": "wardenclyffe",         "busca": "intitle:Wardenclyffe tower",                  "peso": 16},
+
+    {"slug": "wardenclyffe-ruina",   "busca": "Wardenclyffe Tower demolition",               "peso": 13},
+    {"slug": "ny-1930",              "busca": "intitle:Mulberry Street New York",            "peso": 12},
+    {"slug": "raio-morte",           "busca": "Nikola Tesla 1934",                           "peso": 22},
+    {"slug": "pombos",               "busca": "pigeons city square",                         "peso": 16},
+    {"slug": "hotel-new-yorker",     "busca": "Hotel New Yorker",                            "peso": 14},
+
+    {"slug": "tesla-velho",          "busca": "Nikola Tesla 1916 portrait",                  "peso": 14},
+    {"slug": "legado",               "busca": "intitle:Nikola Tesla statue monument",        "peso": 20}
+  ]
+}

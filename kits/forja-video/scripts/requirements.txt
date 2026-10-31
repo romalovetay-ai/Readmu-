@@ -1,0 +1,10 @@
+# Kit de vídeo faceless — dependências Python
+# Instale num venv:  python -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt
+edge-tts>=6.1        # narração neural PT-BR (offline, grátis)
+Pillow>=10.0         # só o particulas.py usa (gera o overlay de poeira/brasa)
+# baixar.py / baixar_musica.py usam só a stdlib (urllib/json) — sem dependência.
+# montar.py / shorts.py / thumb.py chamam o ffmpeg/ffprobe do sistema (não é pacote pip).
+#   Instale o ffmpeg:  winget install Gyan.FFmpeg
+# Legenda: os scripts usam o próprio timing do edge-tts (SentenceBoundary) — Whisper é opcional.
+#   Whisper local (fallback de legenda a partir de áudio):  pip install faster-whisper
+# Upscale (upscalar.py): baixe o Real-ESRGAN ncnn-vulkan à parte e aponte na variável do script.

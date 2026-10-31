@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion style player</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0c0f; color: #d8dce3; font: 13px system-ui, sans-serif; }
+  #wrap { position: absolute; inset: 0 0 44px 0; display: flex; align-items: center; justify-content: center; }
+  canvas { max-width: 100%; max-height: 100%; background: #000; }
+  #bar { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; display: flex; gap: 10px; align-items: center; padding: 0 12px; background: #15171c; }
+  #bar input[type=range] { flex: 1; }
+  button { background: #262a32; color: inherit; border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  body.render #bar { display: none; } body.render #wrap { inset: 0; }
+  body.render canvas { max-width: none; max-height: none; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="bar">
+  <button id="play">Play</button><input id="scrub" type="range" min="0" max="1000" value="0"><span id="time">0.00</span>
+  <button id="snd">Sound on</button><span id="name"></span>
+</div>
+<script src="kit.js"></script>
+<script src="sound.js"></script>
+<script>
+// Style registry: every styles/<id>.js calls MS.register({...}). See ../STYLE_CONTRACT.md.
+window.MS = { styles: {}, register(s) { this.styles[s.id] = s; } };
+</script>
+<script>
+(async function () {
+  const q = new URLSearchParams(location.search);
+  const W = +(q.get('w') || 1280), Hh = +(q.get('h') || 720), RENDER = q.has('render');
+  if (RENDER) document.body.classList.add('render');
+  const load = (src) => new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => bad(new Error('failed to load ' + src)); document.head.appendChild(s); });
+  const styleId = q.get('style') || 'whiteboard';
+  await load(`../styles/${styleId}.js`);
+  const style = MS.styles[styleId];
+  if (!style) throw new Error('style did not register: ' + styleId);
+  // scene: a project file (scene=../../path/scene.js defining window.SCENE) or the style's own demo
+  if (q.get('scene')) await load(q.get('scene'));
+  const scene = window.SCENE || style.demo;
+  // fonts: <link> each stylesheet, then await every font spec before the first draw
+  // wait for each stylesheet, then for every font face it declares, before anything (including cached textures) draws
+  await Promise.all((style.fonts || []).map((f) => new Promise((ok) => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = f.css; l.onload = ok; l.onerror = ok; document.head.appendChild(l); })));
+  for (const f of style.fonts || []) for (const spec of f.specs || []) { try { await document.fonts.load(spec); } catch (e) {} }
+  await document.fonts.ready;
+
+  const cv = document.getElementById('c'); cv.width = W; cv.height = Hh;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const D = scene.duration;
+  if (style.setup) style.setup(W, Hh);
+  const draw = (t) => { ctx.save(); ctx.clearRect(0, 0, W, Hh); scene.draw(ctx, W, Hh, Math.max(0, Math.min(D, t)), style); ctx.restore(); };
+  window.seek = (t) => draw(t);
+  window.DURATION = D;
+  window.scoreSound = (k) => scene.score && scene.score(k, style);
+  window.STYLE = style;
+  document.getElementById('name').textContent = `${style.name} · ${style.family} · ${W}x${Hh} · ${D}s`;
+  draw(0);
+  window.READY = true;
+  if (RENDER) return;
+
+  let playing = false, t0 = 0, startAt = 0, stop = null, sound = true;
+  const scrub = document.getElementById('scrub'), tl = document.getElementById('time');
+  const now = () => (playing ? Math.min(D, t0 + (performance.now() - startAt) / 1000) : t0);
+  function frame() { const t = now(); draw(t); scrub.value = (t / D) * 1000; tl.textContent = t.toFixed(2);
+    if (playing && t >= D) { t0 = 0; startAt = performance.now(); if (stop) { stop(); stop = sound ? SND.live(window.scoreSound, 0) : null; } }
+    requestAnimationFrame(frame); }
+  function setPlay(p) { if (p === playing) return; t0 = now(); playing = p; startAt = performance.now(); document.getElementById('play').textContent = p ? 'Pause' : 'Play';
+    if (stop) { stop(); stop = null; } if (p && sound) stop = SND.live(window.scoreSound, t0); }
+  document.getElementById('play').onclick = () => setPlay(!playing);
+  scrub.oninput = () => { t0 = (scrub.value / 1000) * D; startAt = performance.now(); if (stop) { stop(); stop = playing && sound ? SND.live(window.scoreSound, t0) : null; } };
+  document.getElementById('snd').onclick = (e) => { sound = !sound; e.target.textContent = sound ? 'Sound on' : 'Sound off'; if (stop) { stop(); stop = null; } if (sound && playing) stop = SND.live(window.scoreSound, now()); };
+  requestAnimationFrame(frame);
+})().catch((e) => { document.body.innerHTML = '<pre style="color:#f66;padding:20px">' + e.stack + '</pre>'; window.READY_ERROR = String(e); });
+</script>
+</body>
+</html>

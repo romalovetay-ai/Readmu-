@@ -1,0 +1,15 @@
+{
+  "narracao": "tesla-narracao-v2.mp3",
+  "srt": "tesla-narracao-v2.srt",
+  "ini": 0.0,
+  "fim": 32.9,
+  "saida": "shorts/tesla-coldopen-v2.mp4",
+  "obs": "Short do COLD OPEN do roteiro v2 (gap de informação: corrente domada por um homem -> iluminou a feira / morreu com pombos -> como termina assim? a verdade e mais triste que a lenda). Trilha com ducking. Linkar de volta ao longo no YouTube (video relacionado).",
+  "cenas": [
+    {"slug": "colorado-springs", "peso": 8},
+    {"slug": "feira-chicago",    "peso": 6},
+    {"slug": "pombos",           "peso": 8},
+    {"slug": "tesla-jovem",      "peso": 6},
+    {"slug": "tesla-velho",      "peso": 6}
+  ]
+}

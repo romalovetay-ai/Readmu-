@@ -45,11 +45,14 @@ if ! command -v whisper >/dev/null; then
 fi
 
 # Node packages for the Remotion / canvas templates (--ignore-scripts: no install scripts are run)
-for d in anything2explainer/template video-shotcraft/template anidoodle/engine short-drama-edit/assets/remotion; do
+for d in anything2explainer/template video-shotcraft/template anidoodle/engine short-drama-edit/assets/remotion motion-styles/engine; do
   [ -d "$SK/$d/node_modules" ] && continue
   log "npm install: $d"
   (cd "$SK/$d" && npm install --ignore-scripts --no-audit --no-fund --no-package-lock >/dev/null 2>&1) || log "npm install failed: $d"
 done
+
+# rembg: cut a character or object out of its background (mascot poses, thumbnails). Model downloads on first use.
+python3 -c "import rembg" 2>/dev/null || { P="pip install -q"; python3 -m pip install --help 2>/dev/null | grep -q break-system-packages && P="$P --break-system-packages"; $P "rembg[cpu]" "pillow<12" || log "rembg install failed"; }
 
 # Herk Edit Kit (HyperFrames, GSAP) for the edit-video / hyperframes / short-form-edit skills
 if [ ! -d "$ROOT/kits/herk-edit-kit/node_modules" ]; then
