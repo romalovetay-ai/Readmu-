@@ -38,15 +38,15 @@ LINES = [
 
 # label anchors in plate pixel coordinates (1080x1920 plates), set after looking at the renders
 LAYER_LABELS = [
-    ("РОГОВОЙ СЛОЙ", "защитный барьер", (330, 520), (60, 330)),
-    ("ЭПИДЕРМИС", "клетки и пигмент меланин", (560, 640), (520, 430)),
-    ("ДЕРМА", "коллаген, эластин, сосуды", (420, 1050), (60, 870)),
-    ("ГИПОДЕРМА", "жировая клетчатка", (300, 1560), (520, 1330)),
+    ("РОГОВОЙ СЛОЙ", "защитный барьер кожи", (430, 540), (60, 300)),
+    ("ЭПИДЕРМИС", "клетки и пигмент меланин", (300, 690), (540, 440)),
+    ("ДЕРМА", "коллаген, эластин, сосуды", (520, 1050), (60, 1000)),
+    ("СОСОЧКИ ДЕРМЫ", "волны, что питают эпидермис", (600, 780), (500, 1250)),
 ]
 AGING_LABELS = [
-    ("МАЛО ВЛАГИ", "кожа теряет упругость", (420, 980), (60, 760)),
-    ("ТОНКИЕ ВОЛОКНА", "коллаген разрушается", (700, 1150), (540, 1000)),
-    ("ПИГМЕНТ", "неровный тон", (640, 640), (560, 470)),
+    ("СУХОСТЬ", "шелушение и микротрещины", (560, 440), (60, 300)),
+    ("ПИГМЕНТ", "неровный тон", (420, 700), (560, 520)),
+    ("ТОНКИЕ ВОЛОКНА", "мало влаги и коллагена", (420, 1250), (60, 1060)),
 ]
 
 
@@ -233,7 +233,7 @@ def captions(cr, sc, gt):
         widths = [cr.text_extents(w).x_advance for w in words]
         total = sum(widths) + sp * (len(words) - 1)
         x = W / 2 - total / 2
-        y = 1600 + 10 * (1 - ease_out(age / 0.2))
+        y = 1720 + 10 * (1 - ease_out(age / 0.2))
         for (w, hl, ws, we), ww in zip(ch, widths):
             active = ws - 0.03 <= gt < we + 0.05
             col = GEL if hl else (1, 1, 1)
@@ -385,7 +385,8 @@ G = {}
 
 def init():
     for nm in ("syringe", "section_bad", "section_good", "dermis_bad", "dermis_good", "surface_bad", "surface_good"):
-        G[nm] = load_plate(nm)
+        p = nm if os.path.exists(os.path.join(PLATES, nm + ".png")) else "section_bad"   # preview before all renders exist
+        G[nm] = load_plate(p)
     frames = sorted(f for f in os.listdir(ANIM) if f.endswith(".png"))
     G["anim"] = [os.path.join(ANIM, f) for f in frames]
     G["anim_cache"] = {}
