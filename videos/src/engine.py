@@ -1,10 +1,11 @@
+import os
 import math, random
 import cairo
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 W, H, FPS = 720, 1280, 30
-FONTDIR = "/tmp/claude-0/-home-user-Readmu-/ef786176-9eaf-51d0-8768-a9c5eb90af56/scratchpad/fonts/"
+FONTDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts") + "/"
 _fonts = {}
 VLEVEL = 0.0       # current narration loudness 0..1, set per frame by the renderer
 SHOT_NIGHT = 0.0

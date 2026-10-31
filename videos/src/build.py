@@ -248,7 +248,8 @@ def music(n, ep):
 def build_timeline(ep):
     E = story.EP[ep]
     shots = [dict(s) for s in E["shots"]]
-    tempo = 1.0
+    tempo = E.get("tempo", 1.0)
+    END_MIN = 2.2 if E.get("endcard", True) else 1.2
     for _ in range(6):
         voices, total = [], 0
         for s in shots:
@@ -272,14 +273,21 @@ def build_timeline(ep):
         s["post"] += add
         s["T"] += add
     total = sum(s["T"] for s in shots)
+    if not E.get("endcard", True):
+        shots[-1]["T"] += TARGET - total
+        shots[-1]["post"] += TARGET - total
+        voices_out = voices
+    else:
+        voices_out = None
     end = dict(story.S("", lambda c, x, t, T: engine.endcard(c, x, t, dict(big=E["next"],
                                                                          small=E.get("next_small",
                                                                                      "ПРОДОЛЖЕНИЕ СЛЕДУЕТ"))),
                        zoom=(1.0, 1.05, 360, 640), sfx=[(0.0, "sting")]))
-    end["T"] = TARGET - total
-    end["vdur"] = 0
-    shots.append(end)
-    voices.append(np.zeros(0, np.float32))
+    if voices_out is None:
+        end["T"] = TARGET - total
+        end["vdur"] = 0
+        shots.append(end)
+        voices.append(np.zeros(0, np.float32))
     t0 = 0
     for s in shots:
         s["t0"] = t0
@@ -484,6 +492,11 @@ def render(fi):
             hgt = rr.randrange(8, int(70 * SC))
             arr[y0:y0 + hgt] = np.roll(arr[y0:y0 + hgt], rr.randrange(-60, 60), axis=1)
         img = Image.fromarray(arr)
+    E = story.EP[ep]
+    if E.get("progress"):
+        d = ImageDraw.Draw(img)
+        d.rectangle((0, 0, OW, int(7 * SC)), fill=(0, 0, 0, 140))
+        d.rectangle((0, 0, int(OW * tt / TARGET), int(7 * SC)), fill=YEL)
     pill(img, W / 2, 46, "СТУК В 3:07 · СЕРИЯ %d" % ep if ep < 5 else "СТУК В 3:07 · ФИНАЛ", "#111111", "#FFFFFF", 22)
     if s.get("top"):
         a, b = s["top"]
@@ -504,6 +517,13 @@ def render(fi):
     for a, b, ch in s["caps"]:
         if a <= t < b:
             draw_caption(img, ch, t - a)
+    cta = E.get("cta")
+    if cta and tt > TARGET - cta[2]:
+        k = ease((tt - (TARGET - cta[2])) / 0.25)
+        pill(img, W / 2, 600, cta[0], YEL, "#111111", 40, 0.6 + 0.4 * k)
+        pill(img, W / 2, 680, cta[1], "#FFFFFF", "#111111", 26, 0.6 + 0.4 * k)
+        if math.sin(tt * 8) > -0.3:
+            pill(img, W / 2, 1150, cta[3], "#FF3B30", "#FFFFFF", 28, 1.0)
     return img.convert("RGB").tobytes()
 
 
