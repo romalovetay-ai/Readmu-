@@ -775,6 +775,8 @@ def render_frame(args):
         pill(cr, 810, 330, "ПОСЛЕ", 50, kind, scale=la, alpha=la, dot=False)
         for k in range(10):
             rr_ = np.random.default_rng(k)
+            if split > W - 80:
+                break
             x, y = rr_.uniform(split + 30, W - 30), rr_.uniform(450, 1450)
             a2 = math.sin(math.pi * ((lt * 1.3 + k * 0.17) % 1.0))
             if x < W - 10:
