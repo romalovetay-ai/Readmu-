@@ -18,6 +18,11 @@
 | `remotion-motion-graphics` | [haidrrrry/claude-remotion-skill](https://github.com/haidrrrry/claude-remotion-skill) | MIT | Моушн-графика на Remotion |
 | `video-engine` | [ninjasweb/video-engine-skill](https://github.com/ninjasweb/video-engine-skill) | MIT | Озвученные ролики; голос — ElevenLabs/Fish Audio (платно) или своя запись / наш `tts.py` |
 | `short-drama*` (11) | [zenstory-ai/drama-skills](https://github.com/zenstory-ai/drama-skills) | MIT | Сценарий, персонажи, раскадровка |
+| `yt-audit`, `yt-chapters`, `yt-comment`, `yt-edit`, `yt-package`, `yt-plan`, `yt-retention`, `yt-script`, `yt-seo`, `yt-shorts`, `yt-viral` | [Jakeschincariol/youtube-agent-skill](https://github.com/Jakeschincariol/youtube-agent-skill) | MIT | Ведение YouTube: сценарии с хуками, название + превью, SEO, главы, удержание, комментарии, план, Shorts |
+| `claude-youtube` | [AgriciDaniel/claude-youtube](https://github.com/AgriciDaniel/claude-youtube) | MIT | Аудит канала, стратегия, монетизация, конкуренты, календарь |
+| `scrapecreators-api`, `outlier-post-finder`, `trend-discovery`, `comment-mining`, `competitor-social-research`, `creator-profile-teardown`, `audience-research`, `social-listening-brief`, `transcript-intelligence`, `content-repurposing`, `influencer-prospecting`, `ad-library-teardown`, `product-demand-research` | [ScrapeCreators/social-media-research-skills](https://github.com/ScrapeCreators/social-media-research-skills) | MIT | Аналитика ниши, аутлайеры, тренды, комментарии. Полный режим — с ключом `SCRAPECREATORS_API_KEY` (платно) |
+| `brand-review`, `campaign-plan`, `competitive-brief`, `content-creation`, `draft-content`, `email-sequence`, `performance-report`, `seo-audit` | [anthropics/knowledge-work-plugins](https://github.com/anthropics/knowledge-work-plugins) (marketing) | Apache 2.0 | Посты, контент-план, отчёты, тон бренда |
+| `edit-video`, `make-a-video`, `video-storytelling`, `hyperframes*`, `gsap`, `style-library`, `short-form-edit`, `short-form-video`, `cut-silences`, `cut-mistakes`, `motion-showreel`, `website-to-hyperframes` | [nateherkai/herk-edit-kit](https://github.com/nateherkai/herk-edit-kit) | MIT | Живая моушн-графика HyperFrames, 400+ карточек стилей, нарезка, Shorts. Скрипты и библиотека стилей — в `kits/herk-edit-kit` |
 
 ## Подготовка
 
@@ -32,6 +37,8 @@ bash .claude/setup.sh
 ## Инструменты в `.claude/tools/`
 
 - `tts.py "Текст" out.mp3 [--voice ru-RU-DmitryNeural] [--engine piper]` — бесплатная озвучка. Голоса edge-tts: `ru-RU-SvetlanaNeural`, `ru-RU-DmitryNeural` (нужен интернет). Piper работает без интернета: `ru_RU-irina-medium`, `ru_RU-dmitri-medium`.
+- `youtube.py` — загрузка роликов, превью, субтитры, расписание публикации, плейлисты, статистика, комментарии, YouTube Analytics и удержание. Секреты: `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN` (как получить — в начале файла).
+- `telegram.py` — посты, фото, видео, альбомы, опросы, закрепы, статистика канала. Секреты: `TG_BOT_TOKEN`, `TG_CHANNEL`.
 - `whisper` — команда, совместимая с openai-whisper, но на faster-whisper, без PyTorch. Нужна скилу `video-editing`.
 
 ## Что исправлено в скилах
@@ -43,3 +50,16 @@ bash .claude/setup.sh
 ## Пример
 
 `pieces/luchik/` — пробный мультик «Лучик» (скил `animate`, озвучка edge-tts). Готовое видео: `pieces/luchik/renders/share.mp4`.
+
+## Агенты в `.claude/agents/`
+
+| Агент | Что делает |
+|---|---|
+| `youtube-channel-manager` | План, упаковка, SEO, публикация и расписание, комментарии, статистика |
+| `telegram-channel-manager` | Посты, анонсы роликов, опросы, кросс-постинг Shorts, статистика |
+| `video-producer` | Полный цикл ролика: озвучка диктором → тайминги → живая анимация → субтитры → музыка → MP4 |
+| `scriptwriter` | Исследование темы, хуки, сценарий для голоса с раскадровкой |
+| `channel-analyst` | Ниша, конкуренты, аутлайеры, тренды, комментарии, еженедельные отчёты |
+| `thumbnail-designer` | Превью 1280×720 в паре с названием, A/B-варианты |
+
+Готовые материалы к публикации агенты складывают в `publish/<slug>/` (тяжёлые видео в git не попадают).

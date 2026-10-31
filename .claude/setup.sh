@@ -18,13 +18,13 @@ command -v node >/dev/null || log "Node.js 18+ is missing: https://nodejs.org"
 
 # Python: transcription (Whisper), free voices (edge-tts, Piper), moviepy, Playwright for motion-design.
 # av<16: faster-whisper 1.2 passes metadata_errors to av.open, which newer PyAV removed.
-if ! python3 -c "import faster_whisper, edge_tts, moviepy, imageio_ffmpeg, playwright" 2>/dev/null; then
+if ! python3 -c "import faster_whisper, edge_tts, moviepy, imageio_ffmpeg, playwright, yt_dlp" 2>/dev/null; then
   log "installing Python packages"
   PIP="pip install -q"
   python3 -m pip install --help 2>/dev/null | grep -q break-system-packages && PIP="$PIP --break-system-packages"
   PW=""
   node -e "require('playwright')" 2>/dev/null && PW="==$(node -p "require('playwright/package.json').version")"
-  $PIP faster-whisper edge-tts piper-tts moviepy imageio-ffmpeg "av>=13,<16" "playwright$PW" || log "pip install failed"
+  $PIP faster-whisper edge-tts piper-tts yt-dlp moviepy imageio-ffmpeg "av>=13,<16" "playwright$PW" || log "pip install failed"
 fi
 
 # Russian Piper voices (offline TTS)
@@ -50,6 +50,12 @@ for d in anything2explainer/template video-shotcraft/template anidoodle/engine s
   log "npm install: $d"
   (cd "$SK/$d" && npm install --ignore-scripts --no-audit --no-fund --no-package-lock >/dev/null 2>&1) || log "npm install failed: $d"
 done
+
+# Herk Edit Kit (HyperFrames, GSAP) for the edit-video / hyperframes / short-form-edit skills
+if [ ! -d "$ROOT/kits/herk-edit-kit/node_modules" ]; then
+  log "npm install: kits/herk-edit-kit"
+  (cd "$ROOT/kits/herk-edit-kit" && npm install --ignore-scripts --no-audit --no-fund >/dev/null 2>&1) || log "npm install failed: herk-edit-kit"
+fi
 
 # Remotion: use an already installed Chromium when there is one (cloud image), instead of downloading its own
 HS=$(ls -d /opt/pw-browsers/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell 2>/dev/null | head -1)
