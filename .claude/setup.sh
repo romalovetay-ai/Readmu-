@@ -54,7 +54,7 @@ done
 # Herk Edit Kit (HyperFrames, GSAP) for the edit-video / hyperframes / short-form-edit skills
 if [ ! -d "$ROOT/kits/herk-edit-kit/node_modules" ]; then
   log "npm install: kits/herk-edit-kit"
-  (cd "$ROOT/kits/herk-edit-kit" && npm install --ignore-scripts --no-audit --no-fund >/dev/null 2>&1) || log "npm install failed: herk-edit-kit"
+  (cd "$ROOT/kits/herk-edit-kit" && npm install --ignore-scripts --no-audit --no-fund --no-package-lock >/dev/null 2>&1) || log "npm install failed: herk-edit-kit"
 fi
 
 # Remotion: use an already installed Chromium when there is one (cloud image), instead of downloading its own
