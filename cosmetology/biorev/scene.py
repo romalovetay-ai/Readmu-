@@ -128,9 +128,9 @@ def skin_material(name, kind, state, bump=0.35):
 
 def build_block(state, papule=0.0):
     # cut face (front)
-    nx, nz = 1100, 880
+    nx, nz = 1700, 1360
     hc = load_height("cut_" + state, nx, nz)
-    amp = 0.034
+    amp = 0.05
 
     def front(u, v):
         x = (u - 0.5) * BW
@@ -146,7 +146,7 @@ def build_block(state, papule=0.0):
     def top(u, v):
         x = (u - 0.5) * BW
         y = YF - 0.004 + v * BL
-        z = (ht - 0.5) * 0.03 + 0.001
+        z = (ht - 0.5) * 0.035 + 0.001
         return x, y, z
     tp = grid_mesh("Top", n, n, top)
     tp.data.materials.append(skin_material("TopMat", "top", state, bump=0.5))
@@ -224,21 +224,17 @@ def sphere(name, loc, scale, mat, seg=48):
 
 
 def build_hair():
-    hair = simple_mat("Hair", (0.08, 0.04, 0.025), rough=0.28, coat=0.6)
-    sheath = simple_mat("Sheath", (0.62, 0.30, 0.28), rough=0.35, sss=0.3, coat=0.4)
-    gland = simple_mat("Gland", (0.98, 0.80, 0.42), rough=0.25, sss=0.6, coat=0.5)
-    x0 = 0.95
-    pts = [Vector((x0 + 0.55, YF - 0.25, 1.25)), Vector((x0 + 0.25, YF - 0.12, 0.55)), Vector((x0 + 0.03, YF + 0.01, 0.02)),
-           Vector((x0 - 0.15, YF - 0.005, -0.6)), Vector((x0 - 0.32, YF - 0.005, -1.35))]
-    curve_tube("HairShaft", pts, 0.032, hair)
-    sp = [Vector((x0 + 0.02, YF + 0.06, -0.05)), Vector((x0 - 0.15, YF + 0.065, -0.6)), Vector((x0 - 0.33, YF + 0.07, -1.40))]
-    curve_tube("Sheath", sp, 0.075, sheath)
-    sphere("Bulb", (x0 - 0.34, YF + 0.05, -1.45), (0.10, 0.08, 0.12), sheath)
+    hair = simple_mat("Hair", (0.06, 0.03, 0.018), rough=0.18, coat=1.0)
+    gland = simple_mat("Gland", (0.92, 0.62, 0.18), rough=0.25, sss=0.4, coat=0.6)
+    # shaft rises out of the surface towards the camera and runs down inside the cut, half exposed
+    pts = [Vector((1.45, YF - 0.55, 1.6)), Vector((1.18, YF - 0.22, 0.7)), Vector((0.95, YF - 0.02, 0.03)),
+           Vector((0.76, YF - 0.012, -0.55)), Vector((0.52, YF - 0.010, -1.25)), Vector((0.35, YF + 0.03, -1.6))]
+    curve_tube("HairShaft", pts, 0.04, hair, taper=[1, 1, 1, 0.95, 0.85, 0.6])
     rng = np.random.default_rng(3)
-    for k in range(9):
-        c = Vector((x0 - 0.08 + rng.uniform(0.06, 0.22), YF + 0.015, -0.45 - rng.uniform(0, 0.25)))
-        r = rng.uniform(0.045, 0.075)
-        sphere("Gland%d" % k, c, (r, r * 0.8, r), gland, 32)
+    for k in range(10):
+        c = Vector((0.76 + rng.uniform(0.05, 0.22), YF + 0.01, -0.5 - rng.uniform(0, 0.28)))
+        r = rng.uniform(0.04, 0.07)
+        sphere("Gland%d" % k, c, (r, r * 0.7, r), gland, 32)
 
 
 def build_fat():
@@ -247,35 +243,55 @@ def build_fat():
     placed = []
     for _ in range(400):
         x = rng.uniform(-1.6, 1.6)
-        z = rng.uniform(-2.45, -1.95)
-        r = rng.uniform(0.035, 0.07)
+        z = rng.uniform(-2.5, -1.92)
+        r = rng.uniform(0.06, 0.13)
         if any((x - a) ** 2 + (z - c) ** 2 < (r + rr) ** 2 * 0.85 for a, c, rr in placed):
             continue
         placed.append((x, z, r))
-        sphere("Fat", (x, YF + r * 0.55, z), (r, r * 0.8, r), fat, 24)
+        sphere("Fat", (x, YF + r * 0.45, z), (r, r * 0.75, r * 0.95), fat, 32)
 
 
 def gel_material():
     mat = bpy.data.materials.new("Gel")
     nt, b = principled(mat)
-    setv(b, "Base Color", (0.25, 0.58, 1.0, 1))
-    setv(b, "Roughness", 0.04)
-    setv(b, "Transmission Weight", 0.75)
-    setv(b, "IOR", 1.34)
+    setv(b, "Base Color", (0.55, 0.82, 1.0, 1))
+    setv(b, "Roughness", 0.02)
+    setv(b, "Transmission Weight", 1.0)
+    setv(b, "IOR", 1.36)
     setv(b, "Coat Weight", 1.0)
-    setv(b, "Coat Roughness", 0.02)
-    # inner glow: noise-shaped blue emission
+    setv(b, "Coat Roughness", 0.01)
+    # soft blue glow that is strongest at the core and along the rim (fresnel)
+    lw = nt.nodes.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.35
     noise = nt.nodes.new("ShaderNodeTexNoise")
-    noise.inputs["Scale"].default_value = 6.0
-    noise.inputs["Detail"].default_value = 6.0
+    noise.inputs["Scale"].default_value = 70.0
+    noise.inputs["Detail"].default_value = 2.0
     ramp = nt.nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.elements[0].position = 0.35
-    ramp.color_ramp.elements[0].color = (0.05, 0.25, 0.9, 1)
-    ramp.color_ramp.elements[1].position = 0.75
-    ramp.color_ramp.elements[1].color = (0.75, 0.95, 1.0, 1)
+    ramp.color_ramp.elements[0].position = 0.70
+    ramp.color_ramp.elements[0].color = (0.10, 0.30, 0.75, 1)
+    ramp.color_ramp.elements[1].position = 0.74
+    ramp.color_ramp.elements[1].color = (2.5, 3.0, 3.5, 1)
     nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
-    nt.links.new(ramp.outputs["Color"], b.inputs["Emission Color"])
-    setv(b, "Emission Strength", 0.9)
+    add = nt.nodes.new("ShaderNodeMix")
+    add.data_type = "RGBA"
+    add.blend_type = "ADD"
+    add.inputs[0].default_value = 1.0
+    rimc = nt.nodes.new("ShaderNodeMix")
+    rimc.data_type = "RGBA"
+    rimc.blend_type = "MULTIPLY"
+    rimc.inputs[0].default_value = 1.0
+    rimc.inputs[7].default_value = (0.5, 0.85, 1.6, 1)
+    nt.links.new(lw.outputs["Fresnel"], rimc.inputs[6])
+    nt.links.new(ramp.outputs["Color"], add.inputs[6])
+    nt.links.new(rimc.outputs[2], add.inputs[7])
+    nt.links.new(add.outputs[2], b.inputs["Emission Color"])
+    setv(b, "Emission Strength", 0.7)
+    # faint blue body colour
+    vol = nt.nodes.new("ShaderNodeVolumeAbsorption")
+    vol.inputs["Color"].default_value = (0.55, 0.78, 1.0, 1)
+    vol.inputs["Density"].default_value = 0.9
+    out = [n for n in nt.nodes if n.type == "OUTPUT_MATERIAL"][0]
+    nt.links.new(vol.outputs[0], out.inputs["Volume"])
     return mat
 
 
@@ -283,7 +299,7 @@ def build_bolus(scale):
     if scale <= 0.01:
         return None
     s = scale
-    ob = sphere("Bolus", BOLUS + Vector((0, -0.05, 0)), (0.34 * s, 0.24 * s, 0.17 * s), gel_material(), 64)
+    ob = sphere("Bolus", BOLUS + Vector((0, -0.015, 0)), (0.25 * s, 0.15 * s, 0.12 * s), gel_material(), 96)
     ob.rotation_euler = (0, 0.12, 0)
     return ob
 
@@ -407,11 +423,11 @@ def camera(loc, target, lens=50, focus=None, fstop=2.8, roll=0.0):
 
 SHOTS = {
     # loc, target, lens, fstop
-    "surface": ((0.2, -0.75, 0.16), (0.0, 0.5, 0.0), 45, 2.0),
+    "surface": ((-0.2, YF - 0.35, 0.42), (0.25, YF + 1.4, -0.05), 40, 1.4),
     "syringe": ((1.9, YF - 2.0, 1.25), (0.62, YF + 0.0, 0.62), 85, 2.2),
-    "section": ((0.9, YF - 5.6, 1.6), (0.1, YF + 0.3, -0.95), 50, 5.6),
-    "inject": ((0.75, YF - 4.4, 0.9), (0.05, YF + 0.2, -0.55), 50, 4.0),
-    "dermis": ((0.05, YF - 2.0, -0.35), (-0.08, YF, -0.6), 50, 3.2),
+    "section": ((-1.05, YF - 4.3, 1.35), (0.15, YF + 0.45, -0.75), 50, 1.3),
+    "inject": ((-0.85, YF - 3.4, 0.95), (0.1, YF + 0.35, -0.45), 50, 1.6),
+    "dermis": ((-0.55, YF - 1.9, -0.05), (-0.05, YF + 0.1, -0.55), 50, 1.8),
 }
 
 
@@ -465,7 +481,7 @@ def build(state="bad", bolus=0.0, syringe=None, papule=None, shot="section"):
         camera(loc, tgt, lens, focus, fs, roll=0.0)
         return
     if shot == "surface":
-        focus = 0.75
+        focus = 1.1
     camera(loc, tgt, lens, focus, fs)
 
 
@@ -492,7 +508,7 @@ def anim_inject(outdir, f0, f1, res, samples, n=60):
         root.location = syringe_tip(0.02 + 0.98 * ins)
         drop.hide_render = ins > 0.3
         g = max(grow, 0.03)
-        bol.scale = (base_scale.x * g / max(base_scale.x / 0.34, 1e-6) * 1 if False else 0.34 * g, 0.24 * g, 0.17 * g)
+        bol.scale = (0.25 * g, 0.15 * g, 0.12 * g)
         bol.hide_render = grow <= 0.0
         for k in keys:
             k.value = grow

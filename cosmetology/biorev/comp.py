@@ -113,7 +113,7 @@ def card(cr, x, y, title, sub, prog, target=None):
     tw = cr.text_extents(title).x_advance
     font(cr, 25, bold=False)
     sw = cr.text_extents(sub).x_advance
-    w = max(tw, sw) + 56
+    w = max(tw, sw) + 64
     h = 104
     k = 0.9 + 0.1 * ease_out(prog / 0.3)
     cr.save()
@@ -129,12 +129,15 @@ def card(cr, x, y, title, sub, prog, target=None):
     cr.set_line_width(2)
     cr.set_source_rgba(0.75, 0.62, 0.50, 0.9 * a)
     cr.stroke()
+    rr(cr, 14, 16, 6, h - 32, 3)
+    cr.set_source_rgba(0.45, 0.28, 0.18, a)
+    cr.fill()
     font(cr, 36)
-    cr.move_to(28, 46)
+    cr.move_to(34, 46)
     cr.set_source_rgba(*INK, a)
     cr.show_text(title)
     font(cr, 25, bold=False)
-    cr.move_to(28, 82)
+    cr.move_to(34, 82)
     cr.set_source_rgba(0.42, 0.33, 0.28, a)
     cr.show_text(sub)
     cr.restore()
@@ -151,44 +154,67 @@ def card(cr, x, y, title, sub, prog, target=None):
             cr.set_source_rgba(1, 1, 1, 0.9 * a)
             cr.stroke()
             if la >= 1:
-                cr.arc(target[0], target[1], 8, 0, 2 * math.pi)
+                ang = math.atan2(ey - (sy + (ey - sy) * 0.5), ex - (ex - (ex - sx) * 0.3))
+                for da in (2.6, -2.6):
+                    cr.move_to(ex, ey)
+                    cr.line_to(ex + 22 * math.cos(ang + da), ey + 22 * math.sin(ang + da))
+                cr.set_line_width(3)
                 cr.set_source_rgba(1, 1, 1, 0.95)
-                cr.fill()
-                cr.arc(target[0], target[1], 16 + 4 * math.sin(prog * 8), 0, 2 * math.pi)
-                cr.set_line_width(2)
-                cr.set_source_rgba(1, 1, 1, 0.5)
                 cr.stroke()
 
 
-def header(cr, title, sub, a):
+def header(cr, title, sub, a, idx=0, total=0):
     if a <= 0:
         return
-    g = cairo.LinearGradient(0, 0, 0, 330)
-    g.add_color_stop_rgba(0, 0.05, 0.03, 0.02, 0.75 * a)
-    g.add_color_stop_rgba(1, 0.05, 0.03, 0.02, 0)
+    hb = 250
+    g = cairo.LinearGradient(0, 0, 0, hb)
+    g.add_color_stop_rgba(0, 0.95, 0.90, 0.83, 0.97 * a)
+    g.add_color_stop_rgba(1, 0.92, 0.86, 0.78, 0.97 * a)
     cr.set_source(g)
-    cr.rectangle(0, 0, W, 330)
+    cr.rectangle(0, 0, W, hb)
     cr.fill()
-    font(cr, 30, "Inter")
-    cr.set_source_rgba(0.95, 0.86, 0.74, 0.9 * a)
+    cr.rectangle(0, hb, W, 3)
+    cr.set_source_rgba(0.72, 0.58, 0.45, 0.8 * a)
+    cr.fill()
+    font(cr, 25, "Inter")
     t = "БИОРЕВИТАЛИЗАЦИЯ"
-    sp = 9
+    sp = 7
     widths = [cr.text_extents(ch).x_advance + sp for ch in t]
     x = W / 2 - (sum(widths) - sp) / 2
+    cr.set_source_rgba(0.55, 0.42, 0.32, a)
     for ch, w_ in zip(t, widths):
-        cr.move_to(x, 150)
+        cr.move_to(x, 112)
         cr.show_text(ch)
         x += w_
-    font(cr, 58, "DejaVu Serif")
-    e = cr.text_extents(title)
-    cr.move_to(W / 2 - e.x_advance / 2, 228)
-    cr.set_source_rgba(1, 1, 1, a)
-    cr.show_text(title)
-    font(cr, 28, "Inter", bold=False)
+    font(cr, 56, "DejaVu Serif")
+    e = cr.text_extents(title.upper())
+    cr.move_to(W / 2 - e.x_advance / 2, 180)
+    cr.set_source_rgba(0.30, 0.18, 0.12, a)
+    cr.show_text(title.upper())
+    font(cr, 27, "Inter", bold=False)
     e = cr.text_extents(sub)
-    cr.move_to(W / 2 - e.x_advance / 2, 274)
-    cr.set_source_rgba(0.92, 0.86, 0.80, 0.9 * a)
+    cr.move_to(W / 2 - e.x_advance / 2, 224)
+    cr.set_source_rgba(0.42, 0.32, 0.26, a)
     cr.show_text(sub)
+    # footer
+    fy = 1828
+    cr.rectangle(0, fy, W, H - fy)
+    cr.set_source_rgba(0.95, 0.90, 0.83, 0.95 * a)
+    cr.fill()
+    cr.rectangle(60, fy + 26, W - 120, 1.5)
+    cr.set_source_rgba(0.72, 0.58, 0.45, 0.8 * a)
+    cr.fill()
+    font(cr, 22, "Inter", bold=False)
+    cr.move_to(60, fy + 66)
+    cr.set_source_rgba(0.42, 0.32, 0.26, a)
+    cr.show_text("АНАТОМИЧЕСКИЙ РАЗРЕЗ КОЖИ")
+    if total:
+        font(cr, 22, "Inter")
+        t = "%02d / %02d" % (idx, total)
+        e = cr.text_extents(t)
+        cr.move_to(W - 60 - e.x_advance, fy + 66)
+        cr.set_source_rgba(0.30, 0.18, 0.12, a)
+        cr.show_text(t)
 
 
 def captions(cr, sc, gt):
@@ -358,11 +384,8 @@ G = {}
 
 
 def init():
-    for nm in ("syringe", "section_bad", "section_good", "dermis_bad", "dermis_good"):
+    for nm in ("syringe", "section_bad", "section_good", "dermis_bad", "dermis_good", "surface_bad", "surface_good"):
         G[nm] = load_plate(nm)
-    bad, good, _ = skin.skin_pair("ha")
-    G["skin_bad"] = (np.asarray(bad, np.float32) * 255).astype(np.uint8)
-    G["skin_good"] = (np.asarray(good, np.float32) * 255).astype(np.uint8)
     frames = sorted(f for f in os.listdir(ANIM) if f.endswith(".png"))
     G["anim"] = [os.path.join(ANIM, f) for f in frames]
     G["anim_cache"] = {}
@@ -419,15 +442,8 @@ def render_frame(args):
     s, cr = surface()
     hdr = None
     if kind in ("surface", "end"):
-        state = "skin_bad" if kind == "surface" else "skin_good"
-        Hm = views.persp_H(1536 + 60 * math.sin(gt * 0.2), 2750 - 260 * (u if kind == "surface" else 0.3 + 0.3 * u),
-                           near=900, far=2900, depth=2600)
-        img = views.warp(G[state], Hm).astype(np.float32) / 255
-        img = views.dof(img, 1350)
-        # cinematic darkness above the skin horizon
-        y = np.arange(H, dtype=np.float32)[:, None, None]
-        top = np.clip((620 - y) / 620, 0, 1) ** 1.3
-        img = img * (1 - top * 0.92) + top * 0.92 * np.array([0.10, 0.07, 0.06], np.float32)
+        state = "surface_bad" if kind == "surface" else "surface_good"
+        img = move(G[state], 1.0 + 0.12 * ease(u), 540, 1250)
         # raking light sweep
         sweep = np.exp(-((np.arange(W)[None, :, None] - (-200 + 1500 * u)) / 260.0) ** 2) * 0.10
         img = img + sweep * np.array([1.0, 0.9, 0.8], np.float32)
@@ -617,7 +633,7 @@ def render_frame(args):
         hdr = ("Результат", "после курса процедур")
     if hdr:
         ha = min(ease(lt / 0.4), ease((sd - lt) / 0.3) if sc["i"] == len(scenes) - 1 else 1)
-        header(cr, hdr[0], hdr[1], ha)
+        header(cr, hdr[0], hdr[1], ha, sc["i"], len(scenes) - 2)
     img = over(img, s)
     s3, cr3 = surface()
     captions(cr3, sc, gt)
