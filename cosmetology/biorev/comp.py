@@ -453,14 +453,14 @@ def render_frame(args):
             font(cr, 30, "Inter")
             t = "Б И О Р Е В И Т А Л И З А Ц И Я"
             e = cr.text_extents(t)
-            cr.move_to(W / 2 - e.x_advance / 2, 300)
+            cr.move_to(W / 2 - e.x_advance / 2, 190)
             cr.set_source_rgba(0.95, 0.86, 0.74, a)
             cr.show_text(t)
             font(cr, 76, "DejaVu Serif")
             for k, ln in enumerate(("Кожа просит", "воды")):
                 ak = ease((lt - 0.6 - k * 0.25) / 0.5)
                 e = cr.text_extents(ln)
-                cr.move_to(W / 2 - e.x_advance / 2, 410 + k * 92 + 12 * (1 - ak))
+                cr.move_to(W / 2 - e.x_advance / 2, 290 + k * 92 + 12 * (1 - ak))
                 cr.set_source_rgba(1, 1, 1, ak)
                 cr.show_text(ln)
         else:
