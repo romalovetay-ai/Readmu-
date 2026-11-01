@@ -13,7 +13,9 @@ import cairo
 import gfx
 import character
 import scenes
-import script
+import importlib
+script = importlib.import_module(os.environ.get("SCRIPT", "script"))
+SUFFIX = "" if script.__name__ == "script" else "_" + script.__name__.split("_", 1)[1]
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 TTS = os.path.join(ROOT, "cache", "tts")
@@ -34,7 +36,7 @@ def spoken(s):
     return re.sub(r"\s+", " ", s.replace("*", "")).strip()
 
 
-async def _tts(text, mp3, js):
+async def _tts(text, mp3, js, shout=False):
     import certifi
     ca = os.environ.get("SSL_CERT_FILE") or "/root/.ccr/ca-bundle.crt"
     if os.path.exists(ca):
@@ -42,7 +44,8 @@ async def _tts(text, mp3, js):
     import edge_tts
     for attempt in range(6):
         try:
-            c = edge_tts.Communicate(text, VOICE, rate=RATE, boundary="WordBoundary")
+            c = edge_tts.Communicate(text, VOICE, rate="+28%" if shout else RATE, volume="+40%" if shout else "+0%",
+                                    pitch="+22Hz" if shout else "+0Hz", boundary="WordBoundary")
             words = []
             with open(mp3 + ".part", "wb") as f:
                 async for ch in c.stream():
@@ -59,12 +62,12 @@ async def _tts(text, mp3, js):
     raise RuntimeError("TTS failed: " + text[:60])
 
 
-def tts(text):
-    h = hashlib.md5((VOICE + RATE + text).encode()).hexdigest()[:16]
+def tts(text, shout=False):
+    h = hashlib.md5((VOICE + RATE + text + ("!shout" if shout else "")).encode()).hexdigest()[:16]
     mp3, js, wav = (os.path.join(TTS, h + e) for e in (".mp3", ".json", ".wav"))
     if not os.path.exists(wav):
         if not os.path.exists(mp3):
-            asyncio.run(_tts(text, mp3, js))
+            asyncio.run(_tts(text, mp3, js, shout))
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", mp3, "-ac", "1", "-ar", str(SR), wav], check=True)
     with wave.open(wav) as w:
         a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
@@ -93,7 +96,7 @@ def build_timeline():
     for i, b in enumerate(script.BEATS):
         b = dict(b)
         if b.get("say"):
-            a, words = tts(spoken(b["say"]))
+            a, words = tts(spoken(b["say"]), b.get("shout", False))
             dur = len(a) / SR + b.get("pad", GAP)
         else:
             a, words = np.zeros(0, np.float32), []
@@ -290,7 +293,7 @@ def main():
     open(lst, "w").write("".join(f"file '{p}'\n" for _, _, p in segs))
     wav = os.path.join(OUT, "mix.wav")
     build_audio(beats, total, vt, wav)
-    name = "preview.mp4" if a.preview else "kvartira.mp4"
+    name = "preview.mp4" if a.preview else f"kvartira{SUFFIX}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst,
                     "-ss", str(f0 / FPS), "-t", str((f1 - f0) / FPS), "-i", wav,
                     "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",

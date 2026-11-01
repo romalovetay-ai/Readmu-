@@ -580,6 +580,10 @@ def draw(ctx, b, tl, t, level, beats):
     # subtle punch-in at the start of each beat
     z = 1.0 + 0.025 * (1 - ease(tl / 0.5))
     ctx.save()
+    if b.get("shout"):
+        k = 0.6 + 0.4 * level
+        ctx.translate(14 * k * math.sin(t * 61), 10 * k * math.cos(t * 47))
+        z += 0.03 * level
     ctx.translate(W / 2, H / 2)
     ctx.scale(z, z)
     ctx.translate(-W / 2, -H / 2)
@@ -589,6 +593,9 @@ def draw(ctx, b, tl, t, level, beats):
         draw_pops(ctx, b, tl)
     draw_char(ctx, b, tl, t, level)
     ctx.restore()
+    if b.get("shout"):
+        rgba(ctx, RED, 0.10 + 0.18 * level)
+        ctx.paint()
     if b.get("darken"):
         rgba(ctx, (0, 0, 0), 0.4 * clamp(tl / 1.5))
         ctx.paint()
