@@ -667,47 +667,86 @@ def _drop(ctx, x, y, w, h, ang=0.0):
 
 
 def _earrings(ctx, t):
-    """A round brilliant-cut crystal stud set right in each earlobe, with a twinkle."""
+    """Small brilliant-cut crystal studs in both lobes: 4-prong setting, faceted crown, fire, twinkle."""
     for sx in (-1, 1):
-        lx, ly = sx * 238, -566
-        r = 12
-        ctx.arc(lx, ly, r + 2.5, 0, 2 * math.pi)  # metal setting rim
-        _c(ctx, (0.80, 0.82, 0.88))
+        lx, ly = sx * 236, -564
+        r = 7.5
+        # contact shadow on the lobe
+        _ellipse(ctx, lx + 1.5, ly + 2.5, r + 3, r + 2)
+        _c(ctx, SKIN_SH, 0.8)
+        ctx.fill()
+        # metal cup
+        ctx.arc(lx, ly, r + 1.8, 0, 2 * math.pi)
+        g = cairo.LinearGradient(lx - r, ly - r, lx + r, ly + r)
+        g.add_color_stop_rgb(0, 0.95, 0.96, 0.98)
+        g.add_color_stop_rgb(1, 0.55, 0.57, 0.63)
+        ctx.set_source(g)
         ctx.fill_preserve()
         _c(ctx, OUT)
-        ctx.set_line_width(2.4)
+        ctx.set_line_width(1.1)
         ctx.stroke()
+        # stone body
         ctx.arc(lx, ly, r, 0, 2 * math.pi)
-        g = cairo.RadialGradient(lx - r * 0.35, ly - r * 0.35, 1, lx, ly, r)
+        g = cairo.RadialGradient(lx - r * 0.3, ly - r * 0.35, 0.5, lx, ly, r)
         g.add_color_stop_rgb(0, 1, 1, 1)
-        g.add_color_stop_rgb(0.45, 0.70, 0.88, 1.0)
-        g.add_color_stop_rgb(1, 0.32, 0.55, 0.88)
+        g.add_color_stop_rgb(0.4, 0.74, 0.90, 1.0)
+        g.add_color_stop_rgb(1, 0.30, 0.52, 0.86)
         ctx.set_source(g)
         ctx.fill()
-        # brilliant-cut facets: octagonal table + star facets to the rim
-        tab = [(lx + r * 0.45 * math.cos(k * math.pi / 4 + math.pi / 8), ly + r * 0.45 * math.sin(k * math.pi / 4 + math.pi / 8))
-               for k in range(8)]
+        # facets: octagonal table, star facets (alternating light/dark), kite facets to the girdle
+        tab = [(lx + r * 0.42 * math.cos(k * math.pi / 4 + math.pi / 8),
+                ly + r * 0.42 * math.sin(k * math.pi / 4 + math.pi / 8)) for k in range(8)]
+        rim = [(lx + r * math.cos(k * math.pi / 4), ly + r * math.sin(k * math.pi / 4)) for k in range(8)]
+        for k in range(8):
+            a, b = tab[k], tab[(k + 1) % 8]
+            m = rim[(k + 1) % 8]
+            ctx.move_to(*a)
+            ctx.line_to(*b)
+            ctx.line_to(*m)
+            ctx.close_path()
+            _c(ctx, (1, 1, 1) if k % 2 else (0.36, 0.58, 0.90), 0.45 if k % 2 else 0.35)
+            ctx.fill()
         ctx.move_to(*tab[0])
         for p_ in tab[1:]:
             ctx.line_to(*p_)
         ctx.close_path()
-        for k, p_ in enumerate(tab):
-            a = k * math.pi / 4 + math.pi / 8
-            ctx.move_to(*p_)
-            ctx.line_to(lx + r * math.cos(a + math.pi / 8), ly + r * math.sin(a + math.pi / 8))
-            ctx.move_to(*p_)
-            ctx.line_to(lx + r * math.cos(a - math.pi / 8), ly + r * math.sin(a - math.pi / 8))
-        _c(ctx, (0.22, 0.40, 0.68), 0.6)
-        ctx.set_line_width(1)
+        for k in range(8):
+            ctx.move_to(*tab[k])
+            ctx.line_to(*rim[(k + 1) % 8])
+            ctx.move_to(*tab[(k + 1) % 8])
+            ctx.line_to(*rim[(k + 1) % 8])
+        _c(ctx, (0.18, 0.34, 0.62), 0.55)
+        ctx.set_line_width(0.7)
         ctx.stroke()
+        # table highlight
         ctx.move_to(*tab[4])
         ctx.line_to(*tab[5])
-        ctx.line_to(lx + r * math.cos(5.5 * math.pi / 4), ly + r * math.sin(5.5 * math.pi / 4))
+        ctx.line_to(*tab[6])
+        ctx.line_to(lx, ly)
         ctx.close_path()
-        _c(ctx, (1, 1, 1), 0.75)
+        _c(ctx, (1, 1, 1), 0.8)
         ctx.fill()
+        # rainbow fire specks
+        for (dx, dy, col) in ((2.5, 2.0, (1.0, 0.45, 0.6)), (-2.2, 3.0, (0.55, 1.0, 0.7)), (3.2, -1.5, (1.0, 0.85, 0.3))):
+            ctx.arc(lx + dx, ly + dy, 0.55, 0, 2 * math.pi)
+            _c(ctx, col, 0.9)
+            ctx.fill()
+        # four prongs
+        for k in range(4):
+            a = math.pi / 4 + k * math.pi / 2
+            px, py = lx + (r + 0.6) * math.cos(a), ly + (r + 0.6) * math.sin(a)
+            _ellipse(ctx, px, py, 1.6, 1.6)
+            _c(ctx, (0.88, 0.90, 0.95))
+            ctx.fill_preserve()
+            _c(ctx, (0.35, 0.36, 0.40))
+            ctx.set_line_width(0.5)
+            ctx.stroke()
+        ctx.arc(lx, ly, r, 0, 2 * math.pi)
+        _c(ctx, (0.20, 0.30, 0.50))
+        ctx.set_line_width(0.7)
+        ctx.stroke()
         tw = 0.5 + 0.5 * math.sin(t * 3.1 + sx * 1.7)
-        _sparkle(ctx, lx - 4, ly - 5, 4 + 6 * tw, 0.55 + 0.45 * tw)
+        _sparkle(ctx, lx - 3, ly - 3.5, 2.5 + 4.5 * tw, 0.55 + 0.45 * tw)
 
 
 FACE = [(-218, -700), (-222, -600), (-200, -510), (-140, -440), (-60, -405), (0, -400), (60, -405),
