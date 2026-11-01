@@ -74,6 +74,83 @@ def tts(text, shout=False):
     return a, json.load(open(js))
 
 
+# ------------------------------------------------------------------ F5 voice (TTS=f5): lively cloned voice + Whisper word timings
+ENGINE = os.environ.get("TTS", "edge")
+REF = os.environ.get("VOICE_REF", os.path.join(ROOT, "voice", "ref.wav"))
+SAY_FIX = [  # how abbreviations and foreign names should be pronounced
+    (r"\bЦБ\b", "цэ-бэ"), (r"ДОМ\.РФ", "дом-эр-эф"), (r"\bВЭФ\b", "вэ-э-эф"), (r"\bСША\b", "эс-ша-а"),
+    (r"Evergrande", "Эвергранд"), (r"Reuters", "Рейтерс"), (r"Уолл-стрит", "Уолл-стрит"), (r"\bКарл\b", "Карл"),
+]
+_F5 = {}
+
+
+def f5_voice():
+    if "v" not in _F5:
+        sys.path.insert(0, os.path.join(ROOT, "voice"))
+        import f5
+        _F5["v"] = f5.Voice(REF, open(REF + ".txt").read())
+    return _F5["v"]
+
+
+def _whisper():
+    if "w" not in _F5:
+        from faster_whisper import WhisperModel
+        _F5["w"] = WhisperModel("small", device="cpu", compute_type="int8")
+    return _F5["w"]
+
+
+def _norm(w):
+    return re.sub(r"[^а-яёa-z0-9]", "", w.lower().replace("ё", "е"))
+
+
+def align_words(text, wav_path):
+    """Word timings for the script words: Whisper words matched to the text, gaps interpolated."""
+    import difflib
+    segs, _ = _whisper().transcribe(wav_path, language="ru", word_timestamps=True)
+    ww = [(w.start, w.end, _norm(w.word)) for s in segs for w in s.words if _norm(w.word)]
+    sw = [x for x in re.findall(r"[^\s]+", text) if _norm(x)]
+    times = [None] * len(sw)
+    sm = difflib.SequenceMatcher(a=[_norm(x) for x in sw], b=[w[2] for w in ww], autojunk=False)
+    for blk in sm.get_matching_blocks():
+        for i in range(blk.size):
+            times[blk.a + i] = (ww[blk.b + i][0], ww[blk.b + i][1])
+    dur = ww[-1][1] if ww else 1.0
+    known = [i for i, x in enumerate(times) if x]
+    for i in range(len(sw)):
+        if times[i] is None:
+            prev = max([k for k in known if k < i], default=None)
+            nxt = min([k for k in known if k > i], default=None)
+            a0 = times[prev][1] if prev is not None else 0.0
+            a1 = times[nxt][0] if nxt is not None else dur
+            lo = prev if prev is not None else -1
+            hi = nxt if nxt is not None else len(sw)
+            f = (i - lo) / (hi - lo)
+            st = a0 + (a1 - a0) * f
+            times[i] = (st, st + 0.2)
+    return [[a, b, w] for (a, b), w in zip(times, sw)]
+
+
+def tts_f5(text, shout=False):
+    for a, b in SAY_FIX:
+        text = re.sub(a, b, text)
+    h = hashlib.md5(("f5" + REF + text + ("!shout" if shout else "")).encode()).hexdigest()[:16]
+    raw, js, wav = (os.path.join(TTS, h + e) for e in ("_24k.wav", ".json", ".wav"))
+    if not os.path.exists(wav):
+        f5_voice().say(text, raw, speed=1.12 if shout else 1.0, nfe=16)
+        af = "loudnorm=I=-16:TP=-1.5"
+        if shout:  # a bit higher, louder, slightly overdriven
+            af = "rubberband=pitch=1.06,volume=4dB,acompressor=threshold=-18dB:ratio=6:attack=5:release=60,aexciter=amount=2," + af
+        r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", raw, "-af", af, "-ac", "1", "-ar", str(SR), wav])
+        if r.returncode != 0:  # rubberband filter not built in: plain chain
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", raw, "-af",
+                            ("volume=4dB,acompressor=threshold=-18dB:ratio=6," if shout else "") + "loudnorm=I=-16:TP=-1.5",
+                            "-ac", "1", "-ar", str(SR), wav], check=True)
+        json.dump(align_words(text, wav), open(js, "w"), ensure_ascii=False)
+    with wave.open(wav) as w:
+        a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
+    return a, json.load(open(js))
+
+
 # ------------------------------------------------------------------ timeline
 def anchor_times(say, words):
     """Map {n} markers to the start time of the next spoken word."""
@@ -96,7 +173,7 @@ def build_timeline():
     for i, b in enumerate(script.BEATS):
         b = dict(b)
         if b.get("say"):
-            a, words = tts(spoken(b["say"]), b.get("shout", False))
+            a, words = (tts_f5 if ENGINE == "f5" else tts)(spoken(b["say"]), b.get("shout", False))
             dur = len(a) / SR + b.get("pad", GAP)
         else:
             a, words = np.zeros(0, np.float32), []
@@ -293,7 +370,7 @@ def main():
     open(lst, "w").write("".join(f"file '{p}'\n" for _, _, p in segs))
     wav = os.path.join(OUT, "mix.wav")
     build_audio(beats, total, vt, wav)
-    name = "preview.mp4" if a.preview else f"kvartira{SUFFIX}.mp4"
+    name = "preview.mp4" if a.preview else f"kvartira{SUFFIX}{'_f5' if ENGINE == 'f5' else ''}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst,
                     "-ss", str(f0 / FPS), "-t", str((f1 - f0) / FPS), "-i", wav,
                     "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
