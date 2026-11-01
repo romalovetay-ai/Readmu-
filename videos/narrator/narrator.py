@@ -667,13 +667,47 @@ def _drop(ctx, x, y, w, h, ang=0.0):
 
 
 def _earrings(ctx, t):
-    """A teardrop crystal hanging straight from each earlobe, swinging slightly, with a twinkle."""
+    """A round brilliant-cut crystal stud set right in each earlobe, with a twinkle."""
     for sx in (-1, 1):
-        lx, ly = sx * 238, -560
-        swing = 0.14 * math.sin(t * 2.3 + sx)
-        _drop(ctx, lx, ly, 22, 40, -swing)
+        lx, ly = sx * 238, -566
+        r = 12
+        ctx.arc(lx, ly, r + 2.5, 0, 2 * math.pi)  # metal setting rim
+        _c(ctx, (0.80, 0.82, 0.88))
+        ctx.fill_preserve()
+        _c(ctx, OUT)
+        ctx.set_line_width(2.4)
+        ctx.stroke()
+        ctx.arc(lx, ly, r, 0, 2 * math.pi)
+        g = cairo.RadialGradient(lx - r * 0.35, ly - r * 0.35, 1, lx, ly, r)
+        g.add_color_stop_rgb(0, 1, 1, 1)
+        g.add_color_stop_rgb(0.45, 0.70, 0.88, 1.0)
+        g.add_color_stop_rgb(1, 0.32, 0.55, 0.88)
+        ctx.set_source(g)
+        ctx.fill()
+        # brilliant-cut facets: octagonal table + star facets to the rim
+        tab = [(lx + r * 0.45 * math.cos(k * math.pi / 4 + math.pi / 8), ly + r * 0.45 * math.sin(k * math.pi / 4 + math.pi / 8))
+               for k in range(8)]
+        ctx.move_to(*tab[0])
+        for p_ in tab[1:]:
+            ctx.line_to(*p_)
+        ctx.close_path()
+        for k, p_ in enumerate(tab):
+            a = k * math.pi / 4 + math.pi / 8
+            ctx.move_to(*p_)
+            ctx.line_to(lx + r * math.cos(a + math.pi / 8), ly + r * math.sin(a + math.pi / 8))
+            ctx.move_to(*p_)
+            ctx.line_to(lx + r * math.cos(a - math.pi / 8), ly + r * math.sin(a - math.pi / 8))
+        _c(ctx, (0.22, 0.40, 0.68), 0.6)
+        ctx.set_line_width(1)
+        ctx.stroke()
+        ctx.move_to(*tab[4])
+        ctx.line_to(*tab[5])
+        ctx.line_to(lx + r * math.cos(5.5 * math.pi / 4), ly + r * math.sin(5.5 * math.pi / 4))
+        ctx.close_path()
+        _c(ctx, (1, 1, 1), 0.75)
+        ctx.fill()
         tw = 0.5 + 0.5 * math.sin(t * 3.1 + sx * 1.7)
-        _sparkle(ctx, lx - 5 + 30 * swing, ly + 24, 4 + 5 * tw, 0.55 + 0.45 * tw)
+        _sparkle(ctx, lx - 4, ly - 5, 4 + 6 * tw, 0.55 + 0.45 * tw)
 
 
 FACE = [(-218, -700), (-222, -600), (-200, -510), (-140, -440), (-60, -405), (0, -400), (60, -405),
