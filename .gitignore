@@ -30,3 +30,6 @@ research/kvartira_src/*.mov
 research/kvartira_src/*.wav
 research/kvartira_src/part*.json
 research/kvartira_src/transcribe.log
+!videos/kvartira/out/thumb_A.jpg
+!videos/kvartira/out/thumb_B.jpg
+!videos/kvartira/out/thumb_C.jpg
