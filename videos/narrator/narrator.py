@@ -286,108 +286,69 @@ def _nautical_star(ctx, x, y, r, rot=0.0):
     ctx.stroke()
 
 
+TATTOO_TEXT = "WUZI"
+TATTOO_FONT = "Pirata One"  # videos/narrator/fonts (OFL); falls back to a serif if not installed
+
+
 def _tattoo(ctx):
-    """Old-school swallow with feathered wings, forked tail, red throat, plus two nautical stars, on the neck."""
+    """Black-and-grey blackletter lettering across the side of the neck, slightly arched."""
     ctx.save()
-    # keep the ink on the skin: clip to the neck shape
     _smooth(ctx, [(-78, -470), (-82, -360), (-60, -318), (0, -300), (60, -318), (82, -360), (78, -470)], closed=False)
     ctx.close_path()
     ctx.clip()
-    ctx.translate(8, -385)
-    ctx.rotate(-0.32)
-    ctx.scale(0.72, 0.72)
+    ctx.translate(4, -338)
+    ctx.rotate(-0.06)
+    ctx.select_font_face(TATTOO_FONT, cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+    ctx.set_font_size(56)
+    ext = ctx.text_extents(TATTOO_TEXT)
+    total = ext.x_advance
+    # build the arched text path letter by letter
+    ctx.new_path()
+    x = -total / 2
+    for ch in TATTOO_TEXT:
+        w = ctx.text_extents(ch).x_advance
+        u = (x + w / 2) / (total / 2)  # -1..1
+        ctx.save()
+        ctx.translate(x + w / 2, 6 * u * u)  # gentle smile-shaped arch
+        ctx.rotate(0.10 * u)
+        ctx.move_to(-w / 2, 0)
+        ctx.text_path(ch)
+        ctx.restore()
+        x += w
+    path = ctx.copy_path()
     ctx.push_group()
-    # upper wing (behind the body): four primaries fanning up-right
-    for (tx, ty, w) in ((26, -84, 22), (46, -90, 24), (64, -82, 24), (80, -64, 22)):
-        _feather(ctx, -6, -14, tx, ty, w)
-    # forked tail
-    _feather(ctx, 30, 8, 104, 0, 15)
-    _feather(ctx, 28, 16, 98, 38, 15)
-    # body
-    ctx.move_to(-66, -18)
-    ctx.curve_to(-40, -38, 12, -28, 46, 6)
-    ctx.curve_to(22, 32, -32, 32, -64, 8)
-    ctx.close_path()
-    _c(ctx, T_NAVY)
-    ctx.fill_preserve()
-    _c(ctx, T_INK)
-    ctx.set_line_width(2.8)
+    # thick soft outline (healed ink spread) -> black fill -> grey gradient shading -> small whip highlights
+    ctx.append_path(path)
+    _c(ctx, T_INK, 0.25)
+    ctx.set_line_width(3)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     ctx.stroke()
-    # cream belly
-    ctx.move_to(-34, 12)
-    ctx.curve_to(-10, 26, 18, 22, 38, 8)
-    ctx.curve_to(16, 14, -8, 14, -34, 12)
-    ctx.close_path()
-    _c(ctx, T_CREAM)
-    ctx.fill_preserve()
+    ctx.append_path(path)
+    _c(ctx, T_INK)
+    ctx.fill()
+    ctx.append_path(path)
+    ctx.save()
+    ctx.clip()
+    g = cairo.LinearGradient(0, -38, 0, 8)
+    g.add_color_stop_rgba(0, 0.45, 0.45, 0.48, 0.0)
+    g.add_color_stop_rgba(0.55, 0.45, 0.45, 0.48, 0.0)
+    g.add_color_stop_rgba(1, 0.50, 0.50, 0.53, 0.75)
+    ctx.set_source(g)
+    ctx.paint()
+    r = _rng(9)
+    for _ in range(90):  # stipple in the lower half of the strokes
+        ctx.arc(r.uniform(-total / 2, total / 2), r.uniform(-14, 6), r.uniform(0.4, 0.9), 0, 2 * math.pi)
+    _c(ctx, (0.62, 0.62, 0.65), 0.6)
+    ctx.fill()
+    ctx.restore()
+    # thin baseline flourish under the word
+    ctx.move_to(-total / 2 + 8, 12)
+    ctx.curve_to(-total / 4, 17, total / 4, 17, total / 2 - 8, 12)
     _c(ctx, T_INK)
     ctx.set_line_width(2)
     ctx.stroke()
-    # red throat and breast
-    ctx.move_to(-66, -2)
-    ctx.curve_to(-60, 14, -42, 20, -26, 14)
-    ctx.curve_to(-34, 6, -44, -2, -52, -6)
-    ctx.close_path()
-    _c(ctx, T_RED)
-    ctx.fill_preserve()
-    _c(ctx, T_INK)
-    ctx.set_line_width(2)
-    ctx.stroke()
-    # lower wing (in front): three feathers sweeping back and down
-    for (tx, ty, w) in ((64, 30, 19), (54, 46, 19), (38, 54, 17)):
-        _feather(ctx, -10, 4, tx, ty, w)
-    # covert feathers: small scalloped rows near the shoulder
-    for k in range(4):
-        ctx.arc(-4 + k * 9, -6 + k * 3, 7, 0.2 * math.pi, 1.1 * math.pi)
-    _c(ctx, T_INK)
-    ctx.set_line_width(1.6)
-    ctx.stroke()
-    # head
-    ctx.arc(-56, -12, 15, 0, 2 * math.pi)
-    _c(ctx, T_NAVY)
-    ctx.fill_preserve()
-    _c(ctx, T_INK)
-    ctx.set_line_width(2.6)
-    ctx.stroke()
-    # beak
-    ctx.move_to(-68, -18)
-    ctx.line_to(-86, -12)
-    ctx.line_to(-69, -8)
-    ctx.close_path()
-    _c(ctx, T_INK)
-    ctx.fill()
-    # eye
-    ctx.arc(-60, -15, 4.6, 0, 2 * math.pi)
-    _c(ctx, T_CREAM)
-    ctx.fill()
-    ctx.arc(-60.5, -15, 2.6, 0, 2 * math.pi)
-    _c(ctx, T_INK)
-    ctx.fill()
-    ctx.arc(-59.4, -16.2, 0.9, 0, 2 * math.pi)
-    _c(ctx, (1, 1, 1))
-    ctx.fill()
-    # dotwork shading: fine stipple at the wing root and along the underside, fading out
-    r = _rng(5)
-    for _ in range(60):
-        u = r.random()
-        x = -12 + u * 30 + r.gauss(0, 3)
-        y = -16 + r.gauss(0, 4) - u * 8
-        ctx.arc(x, y, r.uniform(0.5, 1.0) * (1.2 - u), 0, 2 * math.pi)
-    for _ in range(40):
-        x = r.uniform(-40, 30)
-        y = 22 + r.gauss(0, 2)
-        ctx.arc(x, y, r.uniform(0.4, 0.9), 0, 2 * math.pi)
-    _c(ctx, T_INK, 0.55)
-    ctx.fill()
-    # stars and dots
-    _nautical_star(ctx, 70, -24, 15, 0.2)
-    _nautical_star(ctx, 100, -46, 9, -0.3)
-    for (dx, dy, rr) in ((86, -8, 2.5), (110, -22, 2), (116, -62, 1.8)):
-        ctx.arc(dx, dy, rr, 0, 2 * math.pi)
-        _c(ctx, T_INK)
-        ctx.fill()
     ctx.pop_group_to_source()
-    ctx.paint_with_alpha(0.9)  # healed-ink look: slightly sunk into the skin
+    ctx.paint_with_alpha(0.9)  # healed-ink look
     ctx.restore()
 
 

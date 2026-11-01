@@ -66,4 +66,7 @@ if [ -n "$HS" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo "export REMOTION_BROWSER_EXECUTABLE=$HS" >> "$CLAUDE_ENV_FILE"
 fi
 
+# narrator tattoo font
+mkdir -p "$HOME/.local/share/fonts" && cp -n "$ROOT/videos/narrator/fonts/PirataOne-Regular.ttf" "$HOME/.local/share/fonts/" 2>/dev/null && fc-cache -f >/dev/null 2>&1
+
 log "ready"
