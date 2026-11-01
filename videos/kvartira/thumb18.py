@@ -97,7 +97,7 @@ def variant_a():
     s = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
     c = cairo.Context(s)
     base(c)
-    character.draw(c, 1440, 1180, 1.05, {"pose": "shrug", "emo": "wow", "t": 0.4, "level": 0.9, "look": -0.5})
+    character.draw(c, 1400, 1180, 0.98, {"pose": "shrug", "emo": "wow", "t": 0.4, "level": 0.9, "look": -0.5})
     outlined(c, "17 МЛН", 70, 400, 300, WHITE, glow=0.8, rot=-0.04)
     sticker(c, "ЗА ОДНУШКУ?!", 95, 560, 104, RED, WHITE)
     save(s, "thumb_A")
@@ -108,7 +108,7 @@ def variant_b():
     s = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
     c = cairo.Context(s)
     base(c, (0.55, 0.05, 0.06))
-    character.draw(c, 1440, 1150, 0.9, {"pose": "point", "emo": "angry", "t": 0.7, "level": 0.8, "look": -0.8})
+    character.draw(c, 1400, 1150, 0.9, {"pose": "point", "emo": "angry", "t": 0.7, "level": 0.8, "look": -0.8})
     w = outlined(c, "5,4 МЛН", 90, 270, 170, (0.85, 0.85, 0.85), stroke=10, rot=-0.03)
     c.save()
     c.translate(90, 270)
@@ -129,7 +129,7 @@ def variant_c():
     s = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
     c = cairo.Context(s)
     base(c, (0.5, 0.03, 0.06))
-    cx, cy, r = 430, 470, 300
+    cx, cy, r = 430, 520, 280
     c.arc(cx, cy, r + 14, 0, 2 * math.pi)
     rgba(c, (0.05, 0.02, 0.02))
     c.fill()
@@ -146,7 +146,7 @@ def variant_c():
     outlined(c, "93%", cx, cy + 75, 210, WHITE, align="center")
     sticker(c, "ЗАРПЛАТЫ — БАНКУ", 120, 940, 84, GOLD, rot=-0.03)
     character.draw(c, 1460, 1150, 1.0, {"pose": "facepalm", "emo": "sad", "t": 1.3, "look": -0.6})
-    outlined(c, "20 ЛЕТ", 790, 190, 140, WHITE, glow=0.6, rot=0.05)
+    outlined(c, "20 ЛЕТ", 110, 200, 150, WHITE, glow=0.6, rot=-0.03)
     save(s, "thumb_C")
 
 
