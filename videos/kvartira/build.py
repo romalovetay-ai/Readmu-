@@ -107,7 +107,14 @@ def align_words(text, wav_path):
     """Word timings for the script words: Whisper words matched to the text, gaps interpolated."""
     import difflib
     segs, _ = _whisper().transcribe(wav_path, language="ru", word_timestamps=True)
-    ww = [(w.start, w.end, _norm(w.word)) for s in segs for w in s.words if _norm(w.word)]
+    ww = []
+    for s in segs:
+        for w in s.words:
+            toks = _words_for_check(w.word) if re.search(r"\d", w.word) else [_norm(w.word)]
+            toks = [x for x in toks if x]
+            for k, tk in enumerate(toks):  # numbers written as digits -> words sharing the time span
+                d = (w.end - w.start) / max(1, len(toks))
+                ww.append((w.start + k * d, w.start + (k + 1) * d, tk))
     sw = [x for x in re.findall(r"[^\s]+", text) if _norm(x)]
     times = [None] * len(sw)
     sm = difflib.SequenceMatcher(a=[_norm(x) for x in sw], b=[w[2] for w in ww], autojunk=False)
@@ -130,18 +137,61 @@ def align_words(text, wav_path):
     return [[a, b, w] for (a, b), w in zip(times, sw)]
 
 
+def _words_for_check(s):
+    from num2words import num2words
+    s = s.lower().replace("ё", "е").replace("%", " процентов ")
+    s = re.sub(r"(\d)[ .,](?=\d{3}\b)", r"\1", s)
+    s = re.sub(r"\d+", lambda m: " " + num2words(int(m.group()), lang="ru") + " ", s)
+    return [w for w in re.sub(r"[^а-яa-z ]", " ", s).split() if w]
+
+
+def _match(text, wav_path):
+    import difflib
+    segs, _ = _whisper().transcribe(wav_path, language="ru")
+    hyp = " ".join(x.text for x in segs)
+    return difflib.SequenceMatcher(a=_words_for_check(text), b=_words_for_check(hyp)).ratio()
+
+
+def _gen_checked(sent, out, speed, tries=3, ok=0.86):
+    """Generate one sentence, re-roll up to `tries` times until Whisper agrees with the text; keep the best."""
+    best = (-1.0, None)
+    for k in range(tries):
+        tmp = f"{out}.try{k}.wav"
+        f5_voice().say(sent.lower(), tmp, speed=speed, nfe=16)
+        r = _match(sent, tmp)
+        if r > best[0]:
+            best = (r, tmp)
+        if r >= ok:
+            break
+    os.replace(best[1], out)
+    for k in range(tries):
+        if os.path.exists(f"{out}.try{k}.wav"):
+            os.remove(f"{out}.try{k}.wav")
+    return best[0]
+
+
 def tts_f5(text, shout=False):
     for a, b in SAY_FIX:
         text = re.sub(a, b, text)
     h = hashlib.md5(("f5" + REF + text + ("!shout" if shout else "")).encode()).hexdigest()[:16]
     raw, js, wav = (os.path.join(TTS, h + e) for e in ("_24k.wav", ".json", ".wav"))
     if not os.path.exists(wav):
-        f5_voice().say(text, raw, speed=1.12 if shout else 1.0, nfe=16)
+        import soundfile as sf
+        sents = [x for x in re.split(r"(?<=[.!?…])\s+", text) if x.strip()]
+        parts, scores = [], []
+        for j, snt in enumerate(sents):
+            pth = f"{raw}.s{j}.wav"
+            scores.append(_gen_checked(snt, pth, 1.08 if shout else 1.0))
+            y, sr = sf.read(pth, dtype="float32")
+            parts += [y, np.zeros(int(0.13 * sr), np.float32)]
+            os.remove(pth)
+        sf.write(raw, np.concatenate(parts[:-1]), sr)
+        print(f"  f5 beat ok={min(scores):.2f} :: {text[:60]}", file=sys.stderr, flush=True)
         af = "loudnorm=I=-16:TP=-1.5"
         if shout:  # a bit higher, louder, slightly overdriven
             af = "rubberband=pitch=1.06,volume=4dB,acompressor=threshold=-18dB:ratio=6:attack=5:release=60,aexciter=amount=2," + af
         r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", raw, "-af", af, "-ac", "1", "-ar", str(SR), wav])
-        if r.returncode != 0:  # rubberband filter not built in: plain chain
+        if r.returncode != 0:
             subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", raw, "-af",
                             ("volume=4dB,acompressor=threshold=-18dB:ratio=6," if shout else "") + "loudnorm=I=-16:TP=-1.5",
                             "-ac", "1", "-ar", str(SR), wav], check=True)
