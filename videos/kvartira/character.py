@@ -94,6 +94,30 @@ def _torso(ctx, breathe):
     # inner collar of the white tee
     _smooth(ctx, [(-120, -330), (0, -265), (120, -330), (60, -350), (0, -340), (-60, -350)], closed=True)
     _fill_stroke(ctx, TEE, 5)
+    # shoulder seams and chest folds
+    for sx in (-1, 1):
+        ctx.move_to(sx * 235, -335)
+        ctx.curve_to(sx * 280, -250, sx * 300, -150, sx * 310, -40)
+        ctx.move_to(sx * 150, -250)
+        ctx.curve_to(sx * 170, -200, sx * 165, -150, sx * 150, -110)
+        ctx.move_to(sx * 330, -120)
+        ctx.curve_to(sx * 300, -90, sx * 290, -60, sx * 300, -20)
+    _c(ctx, HOOD_SH)
+    ctx.set_line_width(5)
+    ctx.stroke()
+    # light falling on the shoulders
+    for sx in (-1, 1):
+        _smooth(ctx, [(sx * 230, -338), (sx * 330, -300), (sx * 380, -240), (sx * 340, -255), (sx * 250, -300)])
+        _c(ctx, (1, 1, 1), 0.06)
+        ctx.fill()
+    # kangaroo pocket seam
+    ctx.move_to(-200, 40)
+    ctx.curve_to(-180, -40, -150, -70, -110, -75)
+    ctx.line_to(110, -75)
+    ctx.curve_to(150, -70, 180, -40, 200, 40)
+    _c(ctx, HOOD_SH)
+    ctx.set_line_width(5)
+    ctx.stroke()
     # drawstrings
     for sx in (-70, 70):
         ctx.move_to(sx, -300)
@@ -101,8 +125,11 @@ def _torso(ctx, breathe):
         _c(ctx, (0.85, 0.85, 0.82))
         ctx.set_line_width(9)
         ctx.stroke()
-        _ellipse(ctx, sx + 4, -104, 9, 14)
-        _fill_stroke(ctx, (0.7, 0.7, 0.68), 4)
+        ctx.rectangle(sx - 5, -122, 18, 30)
+        _fill_stroke(ctx, (0.72, 0.74, 0.78), 4)
+        ctx.rectangle(sx - 1, -118, 4, 22)
+        _c(ctx, (1, 1, 1), 0.7)
+        ctx.fill()
     ctx.restore()
 
 
@@ -114,6 +141,11 @@ def _neck(ctx):
     _smooth(ctx, [(-78, -470), (0, -420), (78, -470), (78, -445), (0, -395), (-78, -445)], closed=True)
     _c(ctx, SKIN_SH, 0.85)
     ctx.fill()
+    ctx.move_to(-14, -385)
+    ctx.curve_to(-6, -372, 6, -372, 12, -385)
+    _c(ctx, SKIN_SH)
+    ctx.set_line_width(4)
+    ctx.stroke()
     _tattoo(ctx)
 
 
@@ -141,6 +173,15 @@ def _tattoo(ctx):
     ctx.curve_to(-20, -40, -14, -20, -4, -12)
     ctx.close_path()
     ctx.fill()
+    # feather lines on the wing and tail in skin colour
+    for (x0, y0, x1, y1) in ((-34, -18, -20, -46), (-26, -12, -12, -40), (-18, -8, -6, -30), (4, 30, 14, 46),
+                             (-40, 26, -54, 36)):
+        ctx.move_to(x0, y0)
+        ctx.line_to(x1, y1)
+    _c(ctx, SKIN, 0.55)
+    ctx.set_line_width(2.5)
+    ctx.stroke()
+    _c(ctx, INK, 0.92)
     # stars
     for (sx, sy, r) in ((34, -46, 12), (54, -16, 8)):
         ctx.new_path()
@@ -200,7 +241,18 @@ def _hair_front(ctx, t, sway):
     cols = (HAIR, (0.99, 0.89, 0.58))
     for i, (bx, by, ang, ln, wd, bend, ci) in enumerate(FRINGE):
         b = bend + sway * 8 + 5 * math.sin(t * 1.6 + i * 1.1)
-        _lock(ctx, bx, by, ang + 0.03 * math.sin(t + i), ln, wd, b, cols[ci], 6)
+        a = ang + 0.03 * math.sin(t + i)
+        _lock(ctx, bx, by, a, ln, wd, b, cols[ci], 6)
+        dx, dy = math.sin(a), -math.cos(a)
+        nx, ny = math.cos(a), math.sin(a)
+        for off in (-0.25, 0.2):
+            ctx.move_to(bx + nx * wd * off, by + ny * wd * off)
+            ctx.curve_to(bx + dx * ln * 0.4 + nx * (b * 0.5 + wd * off), by + dy * ln * 0.4 + ny * (b * 0.5 + wd * off),
+                         bx + dx * ln * 0.7 + nx * b * 0.8, by + dy * ln * 0.7 + ny * b * 0.8,
+                         bx + dx * ln * 0.85 + nx * b * 0.9, by + dy * ln * 0.85 + ny * b * 0.9)
+        _c(ctx, HAIR_SH, 0.8)
+        ctx.set_line_width(3)
+        ctx.stroke()
     # hair mass on the skull, filled without an outline so locks seem to grow out of it
     _smooth(ctx, [(-236, -650), (-234, -748), (-180, -835), (-90, -878), (10, -890), (110, -872), (190, -820),
                   (234, -740), (238, -660), (190, -712), (120, -742), (40, -755), (-50, -752), (-140, -738),
@@ -234,6 +286,11 @@ def _ears(ctx):
         _ellipse(ctx, sx * 226, -610, 18, 34)
         _c(ctx, SKIN_SH)
         ctx.fill()
+        ctx.move_to(sx * 236, -650)
+        ctx.curve_to(sx * 252, -630, sx * 250, -590, sx * 232, -575)
+        _c(ctx, OUT)
+        ctx.set_line_width(4)
+        ctx.stroke()
 
 
 FACE = [(-218, -700), (-222, -600), (-200, -510), (-140, -440), (-60, -405), (0, -400), (60, -405),
@@ -262,6 +319,11 @@ def _face_shape(ctx):
         g.add_color_stop_rgba(1, 0.95, 0.55, 0.5, 0)
         ctx.set_source(g)
         ctx.arc(sx * 135, -520, 70, 0, 2 * math.pi)
+        ctx.fill()
+    for (fx, fy) in ((-120, -540), (-100, -528), (-138, -522), (-110, -508), (112, -540), (132, -526), (100, -522),
+                     (124, -508), (-30, -548), (34, -550)):
+        ctx.arc(fx, fy, 3.6, 0, 2 * math.pi)
+        _c(ctx, (0.78, 0.50, 0.38), 0.55)
         ctx.fill()
 
 
@@ -294,14 +356,32 @@ def _eyes(ctx, emo, t, look, blink_override):
         ctx.clip()
         px = ex + look * 20 + sx * 2
         py = ey + 6
+        g = cairo.RadialGradient(px, py - 8, 4, px, py, 32 * pup)
+        g.add_color_stop_rgb(0, 0.55, 0.78, 0.90)
+        g.add_color_stop_rgb(0.7, IRIS[0], IRIS[1], IRIS[2])
+        g.add_color_stop_rgb(1, 0.16, 0.30, 0.42)
         _ellipse(ctx, px, py, 30 * pup, 32 * pup)
-        _c(ctx, IRIS)
+        ctx.set_source(g)
         ctx.fill()
+        for k in range(12):
+            a = k * math.pi / 6
+            ctx.move_to(px + 17 * pup * math.cos(a), py + 18 * pup * math.sin(a))
+            ctx.line_to(px + 27 * pup * math.cos(a), py + 29 * pup * math.sin(a))
+        _c(ctx, (0.20, 0.38, 0.52), 0.5)
+        ctx.set_line_width(2)
+        ctx.stroke()
+        _ellipse(ctx, px, py, 30 * pup, 32 * pup)
+        _c(ctx, (0.10, 0.18, 0.26))
+        ctx.set_line_width(3)
+        ctx.stroke()
         _ellipse(ctx, px, py, 15 * pup, 16 * pup)
         _c(ctx, (0.06, 0.07, 0.09))
         ctx.fill()
-        _ellipse(ctx, px + 10, py - 12, 7, 7)
+        _ellipse(ctx, px + 10, py - 12, 8, 8)
         _c(ctx, (1, 1, 1))
+        ctx.fill()
+        _ellipse(ctx, px - 9, py + 10, 3.5, 3.5)
+        _c(ctx, (1, 1, 1), 0.85)
         ctx.fill()
         # upper lid (heavy, sleepy-skeptical look) + blink
         cover = min(1.0, lid + blink * (1 - lid))
@@ -323,6 +403,22 @@ def _eyes(ctx, emo, t, look, blink_override):
             ctx.line_to(ex + half + 4, ly)
             ctx.set_line_width(7)
             ctx.stroke()
+        # lashes at the outer corner
+        if cover < 0.95:
+            ly = ey - ry + 2 * ry * cover
+            ox = ex + sx * rx * 0.92
+            for k in range(3):
+                ctx.move_to(ox - sx * k * 9, ly + 4 + k * 2)
+                ctx.line_to(ox + sx * (14 - k * 3), ly - 10 - k * 5)
+            _c(ctx, OUT)
+            ctx.set_line_width(4)
+            ctx.stroke()
+        # lower lid
+        ctx.move_to(ex - rx * 0.7, ey + ry * 0.86)
+        ctx.curve_to(ex - rx * 0.3, ey + ry * 1.02, ex + rx * 0.3, ey + ry * 1.02, ex + rx * 0.7, ey + ry * 0.86)
+        _c(ctx, (0.75, 0.52, 0.42))
+        ctx.set_line_width(3)
+        ctx.stroke()
         # tired lower line
         ctx.move_to(ex - 40, ey + ry + 14)
         ctx.curve_to(ex - 15, ey + ry + 24, ex + 15, ey + ry + 24, ex + 40, ey + ry + 14)
@@ -351,6 +447,9 @@ def _nose_mouth(ctx, emo, level):
     _c(ctx, OUT)
     ctx.set_line_width(5)
     ctx.stroke()
+    _ellipse(ctx, 2, -540, 6, 12)
+    _c(ctx, SKIN_HI, 0.9)
+    ctx.fill()
     mouth = EMO.get(emo, EMO["neutral"])[3]
     mx, my = 4, -458
     if level > 0.08:
@@ -406,7 +505,7 @@ def _nose_mouth(ctx, emo, level):
 
 # ----------------------------------------------------------------- arms and hands
 def _sleeve(ctx, pts, w=110, fill=None):
-    """Thick hoodie sleeve along a polyline."""
+    """Thick hoodie sleeve along a polyline: outline, body, top highlight, elbow creases, ribbed cuff."""
     ctx.new_path()
     ctx.move_to(*pts[0])
     for p in pts[1:]:
@@ -418,106 +517,222 @@ def _sleeve(ctx, pts, w=110, fill=None):
     ctx.stroke_preserve()
     _c(ctx, fill or HOOD_HI)
     ctx.set_line_width(w)
+    ctx.stroke_preserve()
+    # soft highlight along the upper side of the fabric
+    ctx.save()
+    ctx.translate(-w * 0.12, -w * 0.16)
+    _c(ctx, (1, 1, 1), 0.07)
+    ctx.set_line_width(w * 0.35)
     ctx.stroke()
-    # cuff
+    ctx.restore()
+    ctx.new_path()
+    # creases at each bend (elbow)
+    for i in range(1, len(pts) - 1):
+        (x0, y0), (x1, y1), (x2, y2) = pts[i - 1], pts[i], pts[i + 1]
+        a1 = math.atan2(y1 - y0, x1 - x0)
+        a2 = math.atan2(y2 - y1, x2 - x1)
+        bis = (a1 + a2) / 2 + math.pi / 2
+        for k, off in enumerate((-0.18, 0.0, 0.18)):
+            cx = x1 + math.cos(a1) * off * w
+            cy = y1 + math.sin(a1) * off * w
+            ctx.move_to(cx + math.cos(bis) * w * 0.38, cy + math.sin(bis) * w * 0.38)
+            ctx.curve_to(cx + math.cos(bis) * w * 0.1 + 6, cy + math.sin(bis) * w * 0.1,
+                         cx - math.cos(bis) * w * 0.05, cy - math.sin(bis) * w * 0.05,
+                         cx - math.cos(bis) * w * (0.2 + 0.08 * k), cy - math.sin(bis) * w * (0.2 + 0.08 * k))
+        _c(ctx, HOOD_SH, 0.9)
+        ctx.set_line_width(5)
+        ctx.stroke()
+    # ribbed cuff
     x, y = pts[-1]
     px, py = pts[-2]
     a = math.atan2(y - py, x - px)
     ctx.save()
     ctx.translate(x, y)
     ctx.rotate(a)
-    ctx.rectangle(-26, -w / 2 - 2, 30, w + 4)
+    rrect_ = (-34, -w / 2 + 2, 38, w - 4)
+    ctx.new_path()
+    r = 10
+    x0, y0, cw, ch = rrect_
+    ctx.arc(x0 + cw - r, y0 + r, r, -math.pi / 2, 0)
+    ctx.arc(x0 + cw - r, y0 + ch - r, r, 0, math.pi / 2)
+    ctx.arc(x0 + r, y0 + ch - r, r, math.pi / 2, math.pi)
+    ctx.arc(x0 + r, y0 + r, r, math.pi, 1.5 * math.pi)
+    ctx.close_path()
     _fill_stroke(ctx, HOOD_SH, 6)
+    for k in range(1, 6):
+        yy = y0 + ch * k / 6
+        ctx.move_to(x0 + 6, yy)
+        ctx.line_to(x0 + cw - 6, yy)
+    _c(ctx, (0.05, 0.05, 0.07), 0.6)
+    ctx.set_line_width(3)
+    ctx.stroke()
     ctx.restore()
 
 
+# finger specs: (base y on the palm edge, segment lengths, width)
+FINGERS = [(-27, (27, 19, 15), 25), (-8, (30, 21, 16), 26), (11, (28, 19, 15), 25), (27, (22, 16, 13), 22)]
+HAND_POSES = {
+    #          spread per finger            (curl1, curl2) per finger                     thumb (angle, curl, front)
+    "open":   ((-0.22, -0.07, 0.07, 0.22), ((0.05, 0.05), (0.04, 0.04), (0.06, 0.06), (0.1, 0.1)), (-0.85, 0.15, False)),
+    "relax":  ((-0.12, -0.04, 0.04, 0.12), ((0.35, 0.35), (0.40, 0.40), (0.50, 0.45), (0.6, 0.5)), (-0.9, 0.3, False)),
+    "fist":   ((-0.05, 0.0, 0.03, 0.08), ((1.6, 1.7), (1.6, 1.7), (1.6, 1.7), (1.6, 1.6)), (0.15, 1.0, True)),
+    "point":  ((-0.04, 0.0, 0.03, 0.08), ((0.0, 0.0), (1.6, 1.7), (1.6, 1.7), (1.6, 1.6)), (0.25, 0.9, True)),
+    "chin":   ((-0.05, 0.0, 0.05, 0.10), ((1.25, 1.1), (1.3, 1.1), (1.35, 1.15), (1.4, 1.2)), (-0.55, 0.1, False)),
+    "flat":   ((-0.10, -0.03, 0.03, 0.10), ((0.08, 0.08), (0.06, 0.06), (0.08, 0.08), (0.1, 0.1)), (-0.95, 0.2, False)),
+}
+
+
+def _capsule_chain(ctx, pts, w, lw=5):
+    ctx.new_path()
+    ctx.move_to(*pts[0])
+    for p in pts[1:]:
+        ctx.line_to(*p)
+    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    _c(ctx, OUT)
+    ctx.set_line_width(w + 2 * lw)
+    ctx.stroke_preserve()
+    _c(ctx, SKIN)
+    ctx.set_line_width(w)
+    ctx.stroke_preserve()
+    # shade along the lower edge
+    ctx.save()
+    ctx.translate(0, w * 0.18)
+    _c(ctx, SKIN_SH, 0.55)
+    ctx.set_line_width(w * 0.38)
+    ctx.stroke()
+    ctx.restore()
+    ctx.new_path()
+
+
+def _finger_pts(bx, by, ang, segs, c1, c2):
+    pts = [(bx, by)]
+    a = ang
+    for k, ln in enumerate(segs):
+        a += (0 if k == 0 else (c1 if k == 1 else c2)) if k else c1 * 0.6
+        x, y = pts[-1]
+        pts.append((x + ln * math.cos(a), y + ln * math.sin(a)))
+    return pts
+
+
+def _nail(ctx, pts, w):
+    (x0, y0), (x1, y1) = pts[-2], pts[-1]
+    a = math.atan2(y1 - y0, x1 - x0)
+    ctx.save()
+    ctx.translate(x1 - math.cos(a) * w * 0.25, y1 - math.sin(a) * w * 0.25)
+    ctx.rotate(a)
+    _ellipse(ctx, 0, -w * 0.1, w * 0.32, w * 0.24)
+    _c(ctx, (1.0, 0.90, 0.86))
+    ctx.fill_preserve()
+    _c(ctx, SKIN_SH)
+    ctx.set_line_width(2.5)
+    ctx.stroke()
+    ctx.restore()
+
+
+def _knuckle_marks(ctx, pts, w):
+    for (x, y) in pts[1:-1]:
+        ctx.move_to(x - w * 0.18, y - w * 0.22)
+        ctx.curve_to(x - w * 0.05, y - w * 0.1, x + w * 0.05, y - w * 0.1, x + w * 0.18, y - w * 0.22)
+    _c(ctx, SKIN_SH)
+    ctx.set_line_width(2.5)
+    ctx.stroke()
+
+
 def _hand(ctx, x, y, ang, kind="open", s=1.0, flip=1):
-    """kind: open (palm up/out), fist, point, chin (curled fingers), flat."""
+    """Detailed cartoon hand. Wrist at (x,y), fingers pointing along angle `ang`; flip=-1 mirrors (other hand)."""
+    spread, curls, (t_ang, t_curl, t_front) = HAND_POSES.get(kind, HAND_POSES["open"])
     ctx.save()
     ctx.translate(x, y)
     ctx.rotate(ang)
     ctx.scale(s, s * flip)
-    if kind == "fist":
-        _smooth(ctx, [(-10, -48), (50, -55), (78, -30), (80, 25), (55, 50), (-5, 48), (-20, 0)])
-        _fill_stroke(ctx, SKIN, 6)
-        for k in range(3):
-            ctx.move_to(40 + k * 0, -30 + k * 24)
-            ctx.line_to(76, -32 + k * 24)
-        _c(ctx, OUT)
-        ctx.set_line_width(4)
-        ctx.stroke()
-    elif kind == "point":
-        _smooth(ctx, [(-10, -45), (45, -50), (70, -25), (70, 30), (40, 50), (-5, 45), (-20, 0)])
-        _fill_stroke(ctx, SKIN, 6)
-        _smooth(ctx, [(55, -48), (150, -58), (162, -42), (150, -26), (60, -20)])
-        _fill_stroke(ctx, SKIN, 6)
-        ctx.move_to(5, -45)
-        ctx.curve_to(0, -80, 30, -90, 45, -60)
-        _c(ctx, OUT)
-        ctx.set_line_width(5)
-        ctx.stroke()
-    elif kind == "chin":
-        _smooth(ctx, [(-15, -40), (40, -55), (85, -45), (95, -10), (80, 30), (30, 45), (-15, 30)])
-        _fill_stroke(ctx, SKIN, 6)
-        for k in range(3):
-            ctx.move_to(50, -32 + k * 22)
-            ctx.curve_to(80, -36 + k * 22, 92, -22 + k * 22, 80, -14 + k * 22)
-        _c(ctx, OUT)
-        ctx.set_line_width(4)
-        ctx.stroke()
-        # thumb up along the jaw
-        _smooth(ctx, [(10, -40), (25, -95), (45, -110), (58, -95), (45, -45)])
-        _fill_stroke(ctx, SKIN, 6)
-    else:  # open palm
-        _smooth(ctx, [(-15, -45), (60, -55), (90, -40), (95, 30), (60, 55), (-10, 45), (-25, 0)])
-        _fill_stroke(ctx, SKIN, 6)
-        for k, (ln, off) in enumerate(((70, -42), (82, -16), (78, 10), (62, 34))):
-            ctx.save()
-            ctx.translate(80, off)
-            ctx.rotate(-0.25 + k * 0.17)
-            _smooth(ctx, [(0, -12), (ln * 0.6, -14), (ln, -8), (ln + 6, 2), (ln, 12), (ln * 0.6, 12), (0, 12)])
-            _fill_stroke(ctx, SKIN, 5)
-            ctx.restore()
-        _smooth(ctx, [(0, 40), (-20, 85), (-5, 110), (20, 100), (35, 50)])
-        _fill_stroke(ctx, SKIN, 5)
+    palm = [(-4, -30), (30, -42), (62, -40), (78, -16), (79, 14), (68, 38), (36, 46), (4, 36), (-10, 4)]
+    fingers = []
+    for (fy, segs, w), sp, (c1, c2) in zip(FINGERS, spread, curls):
+        if c1 >= 0.9:  # folded finger: knuckle out front, tip tucked back onto the palm
+            fingers.append(([(60, fy * 0.95), (84, fy * 0.95 + 2), (70, fy * 0.95 + 12)], w + 2, c1))
+        else:
+            fingers.append((_finger_pts(68, fy, sp, segs, c1, c2), w, c1))
+    if t_front:  # thumb lying across the folded fingers
+        thumb = [(26, -30), (50, -22), (74, -16)]
+    else:
+        thumb = [(30, -30)]
+        a = t_ang
+        for k, ln in enumerate((30, 24)):
+            a += t_curl * (0.5 if k else 0.2)
+            px_, py_ = thumb[-1]
+            thumb.append((px_ + ln * math.cos(a), py_ + ln * math.sin(a)))
+    # fingers that stay in front of the palm only when strongly curled
+    back = [f for f in fingers if f[2] < 0.9]
+    front = [f for f in fingers if f[2] >= 0.9]
+    for pts, w, _ in reversed(back):
+        _capsule_chain(ctx, pts, w)
+        _knuckle_marks(ctx, pts, w)
+        _nail(ctx, pts, w)
+    if not t_front:
+        _capsule_chain(ctx, thumb, 28)
+        _nail(ctx, thumb, 28)
+    _smooth(ctx, palm)
+    _fill_stroke(ctx, SKIN, 6)
+    # palm creases and heel shading
+    ctx.move_to(14, -18)
+    ctx.curve_to(30, -6, 48, -8, 62, -22)
+    ctx.move_to(10, 10)
+    ctx.curve_to(30, 18, 52, 16, 66, 6)
+    _c(ctx, SKIN_SH)
+    ctx.set_line_width(3)
+    ctx.stroke()
+    _ellipse(ctx, 8, 14, 16, 22)
+    _c(ctx, SKIN_SH, 0.35)
+    ctx.fill()
+    for pts, w, _ in front:
+        _capsule_chain(ctx, pts, w)
+    if front:  # knuckle bumps of the curled fingers
+        for pts, w, _ in front:
+            x1, y1 = pts[1]
+            ctx.arc(x1, y1, w * 0.18, 0, 2 * math.pi)
+            _c(ctx, SKIN_HI, 0.8)
+            ctx.fill()
+    if t_front:
+        _capsule_chain(ctx, thumb, 28)
+        _nail(ctx, thumb, 28)
     ctx.restore()
 
 
+def _arm(ctx, pts, kind, s=1.5, flip=1, dang=0.0, w=110, fill=None):
+    """Sleeve along pts, then the hand coming straight out of the cuff along the forearm."""
+    _sleeve(ctx, pts, w, fill)
+    (x0, y0), (x1, y1) = pts[-2], pts[-1]
+    a = math.atan2(y1 - y0, x1 - x0)
+    _hand(ctx, x1 - math.cos(a) * 6, y1 - math.sin(a) * 6, a + dang, kind, s, flip)
+
+
 def _arms(ctx, pose, t, front):
-    """front=False draws the parts behind the head (none for now); front=True draws arms over the torso."""
+    """Arms over the torso for each pose; hands are attached to the cuffs automatically."""
     w = math.sin(t * 2.0) * 6
     if pose in ("idle", "explain_low"):
         return
     if pose == "think":
-        # right arm (viewer's left) up to the chin
-        _sleeve(ctx, [(-330, -260), (-260, -80), (-120, -230), (-70, -360)])
-        _hand(ctx, -70, -395, -1.35, "chin", 1.15)
+        _arm(ctx, [(-330, -260), (-260, -80), (-120, -240), (-75, -365)], "chin", 1.45, -1, 0.15)
     elif pose == "cross":
-        _sleeve(ctx, [(-345, -265), (-300, -110), (170, -205)], 118, (0.22, 0.235, 0.28))
-        _hand(ctx, 195, -215, -0.35, "fist", 0.95)
-        _sleeve(ctx, [(345, -265), (300, -80), (-160, -150)], 118)
-        # fold lines on the top sleeve
+        _arm(ctx, [(-345, -265), (-300, -110), (150, -200)], "fist", 1.3, 1, 0.0, 118, (0.22, 0.235, 0.28))
+        _sleeve(ctx, [(345, -265), (300, -80), (-140, -150)], 118)
         for fx in (40, 120):
             ctx.move_to(fx, -150 + (fx - 40) * 0.12)
             ctx.curve_to(fx + 10, -125, fx + 5, -105, fx - 8, -92)
             _c(ctx, HOOD_SH)
             ctx.set_line_width(5)
             ctx.stroke()
-        _hand(ctx, -185, -160, 3.45, "fist", 0.95, -1)
+        _hand(ctx, -150, -152, math.atan2(-70, -440), "fist", 1.3, -1)
     elif pose == "explain":
-        _sleeve(ctx, [(330, -260), (300, -60), (420, -230 + w)])
-        _hand(ctx, 445, -270 + w, -1.0, "open", 1.15)
+        _arm(ctx, [(330, -260), (300, -60), (420, -230 + w)], "open", 1.5, -1, -0.15)
     elif pose == "shrug":
-        _sleeve(ctx, [(-330, -260), (-330, -90), (-470, -210 + w)])
-        _hand(ctx, -500, -240 + w, -2.2, "open", 1.1, -1)
-        _sleeve(ctx, [(330, -260), (330, -90), (470, -210 - w)])
-        _hand(ctx, 500, -240 - w, -1.0, "open", 1.1)
+        _arm(ctx, [(-330, -260), (-330, -90), (-470, -210 + w)], "open", 1.45, 1, 0.25)
+        _arm(ctx, [(330, -260), (330, -90), (470, -210 - w)], "open", 1.45, -1, -0.25)
     elif pose == "point":
-        _sleeve(ctx, [(330, -260), (330, -100), (450, -380 + w)])
-        _hand(ctx, 460, -420 + w, -1.35, "point", 1.15)
+        _arm(ctx, [(330, -260), (330, -100), (440, -370 + w)], "point", 1.5, -1, -0.1)
     elif pose == "facepalm":
-        _sleeve(ctx, [(-330, -260), (-240, -80), (-110, -330), (-60, -520)])
-        _hand(ctx, -40, -600, -1.1, "open", 1.35)
+        _arm(ctx, [(-330, -260), (-240, -80), (-110, -320), (-70, -470)], "flat", 1.7, -1, 0.05)
 
 
 def draw(ctx, cx, base_y, scale, state):
