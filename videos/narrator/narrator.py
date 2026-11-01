@@ -74,125 +74,140 @@ def _ellipse(ctx, x, y, rx, ry):
 
 
 # ----------------------------------------------------------------- body
+TEE_C = (0.15, 0.16, 0.19)      # charcoal t-shirt
+TEE_SH = (0.09, 0.095, 0.115)
+TEE_HI = (0.24, 0.25, 0.30)
+STITCH = (0.34, 0.36, 0.42)
+ARM_TATTOOS = ("MONEY", "TALKS")  # forearm lettering (viewer's left arm, viewer's right arm)
+
+
 def _torso(ctx, breathe):
+    """Charcoal crew-neck t-shirt: fabric folds, shoulder seams, ribbed collar with double stitch, chest print."""
     s = 1 + 0.012 * breathe
     ctx.save()
     ctx.scale(s, 1)
-    # hoodie body
-    pts = [(-430, 0), (-420, -190), (-360, -290), (-210, -345), (-95, -360), (0, -352), (95, -360),
-           (210, -345), (360, -290), (420, -190), (430, 0)]
-    _smooth(ctx, pts, closed=False)
-    ctx.line_to(430, 40)
-    ctx.line_to(-430, 40)
+    body = [(-400, 0), (-395, -170), (-345, -268), (-215, -318), (-100, -334), (0, -330), (100, -334),
+            (215, -318), (345, -268), (395, -170), (400, 0)]
+    _smooth(ctx, body, closed=False)
+    ctx.line_to(400, 40)
+    ctx.line_to(-400, 40)
     ctx.close_path()
-    _fill_stroke(ctx, HOOD)
-    # side shading
-    _smooth(ctx, [(-430, 0), (-420, -190), (-360, -290), (-300, -310), (-330, -150), (-340, 40)], closed=False)
-    ctx.line_to(-430, 40)
-    ctx.close_path()
-    _c(ctx, HOOD_SH, 0.8)
-    ctx.fill()
-    # hood rim lying around the neck
-    _smooth(ctx, [(-230, -340), (-150, -395), (0, -405), (150, -395), (230, -340), (160, -300), (0, -290),
-                  (-160, -300)], closed=True)
-    _fill_stroke(ctx, HOOD_HI, 6)
-    # inner collar of the white tee
-    _smooth(ctx, [(-120, -330), (0, -265), (120, -330), (60, -350), (0, -340), (-60, -350)], closed=True)
-    _fill_stroke(ctx, TEE, 5)
-    ctx.move_to(-104, -326)
-    ctx.curve_to(-50, -286, 50, -286, 104, -326)
-    _c(ctx, (0.78, 0.78, 0.76))
-    ctx.set_line_width(3)
-    ctx.stroke()
-    # inner lining of the hood, slightly lighter, with a fold line
-    _smooth(ctx, [(-200, -350), (-120, -388), (0, -396), (120, -388), (200, -350), (120, -370), (0, -376),
-                  (-120, -370)], closed=True)
-    _c(ctx, (0.30, 0.32, 0.38), 0.9)
-    ctx.fill()
-    # shoulder seams and chest folds
-    for sx in (-1, 1):
-        ctx.move_to(sx * 235, -335)
-        ctx.curve_to(sx * 280, -250, sx * 300, -150, sx * 310, -40)
-        ctx.move_to(sx * 150, -250)
-        ctx.curve_to(sx * 170, -200, sx * 165, -150, sx * 150, -110)
-        ctx.move_to(sx * 330, -120)
-        ctx.curve_to(sx * 300, -90, sx * 290, -60, sx * 300, -20)
-    _c(ctx, HOOD_SH)
-    ctx.set_line_width(5)
-    ctx.stroke()
-    # light falling on the shoulders
-    for sx in (-1, 1):
-        _smooth(ctx, [(sx * 230, -338), (sx * 330, -300), (sx * 380, -240), (sx * 340, -255), (sx * 250, -300)])
-        _c(ctx, (1, 1, 1), 0.06)
-        ctx.fill()
-    # kangaroo pocket seam
-    ctx.move_to(-200, 40)
-    ctx.curve_to(-180, -40, -150, -70, -110, -75)
-    ctx.line_to(110, -75)
-    ctx.curve_to(150, -70, 180, -40, 200, 40)
-    _c(ctx, HOOD_SH)
-    ctx.set_line_width(5)
-    ctx.stroke()
-    # double stitching along seams (dashed)
+    _c(ctx, TEE_C)
+    ctx.fill_preserve()
     ctx.save()
-    ctx.set_dash([7, 6])
+    ctx.clip()
+    # big soft shading: darker sides, lighter chest
+    g = cairo.LinearGradient(-400, 0, 400, 0)
+    g.add_color_stop_rgba(0, 0, 0, 0, 0.45)
+    g.add_color_stop_rgba(0.25, 0, 0, 0, 0.0)
+    g.add_color_stop_rgba(0.75, 0, 0, 0, 0.0)
+    g.add_color_stop_rgba(1, 0, 0, 0, 0.35)
+    ctx.set_source(g)
+    ctx.paint()
+    g = cairo.RadialGradient(-60, -230, 10, -40, -200, 260)
+    g.add_color_stop_rgba(0, 1, 1, 1, 0.07)
+    g.add_color_stop_rgba(1, 1, 1, 1, 0)
+    ctx.set_source(g)
+    ctx.paint()
+    # drape folds from the shoulders and under the chest
     for sx in (-1, 1):
-        ctx.move_to(sx * 245, -332)
-        ctx.curve_to(sx * 292, -248, sx * 312, -150, sx * 322, -40)
-    ctx.move_to(-188, 40)
-    ctx.curve_to(-170, -30, -142, -58, -104, -62)
-    ctx.line_to(104, -62)
-    ctx.curve_to(142, -58, 170, -30, 188, 40)
-    _c(ctx, (0.36, 0.38, 0.44), 0.9)
+        for (x0, y0, x1, y1, x2, y2, w) in ((300, -250, 270, -170, 280, -60, 5), (250, -290, 210, -210, 230, -110, 4),
+                                            (160, -150, 120, -100, 140, 10, 4), (330, -120, 300, -60, 320, 30, 5)):
+            ctx.move_to(sx * x0, y0)
+            ctx.curve_to(sx * x1, y1, sx * x1, y1, sx * x2, y2)
+            _c(ctx, TEE_SH, 0.9)
+            ctx.set_line_width(w)
+            ctx.stroke()
+            ctx.move_to(sx * (x0 - 8), y0 + 4)
+            ctx.curve_to(sx * (x1 - 8), y1, sx * (x1 - 8), y1, sx * (x2 - 8), y2)
+            _c(ctx, TEE_HI, 0.55)
+            ctx.set_line_width(3)
+            ctx.stroke()
+    # fine knit texture
+    r = _rng(21)
+    for _ in range(260):
+        x, y = r.uniform(-390, 390), r.uniform(-320, 30)
+        ctx.move_to(x, y)
+        ctx.line_to(x + r.uniform(2, 5), y + r.uniform(-1, 1))
+    _c(ctx, (1, 1, 1), 0.04)
+    ctx.set_line_width(1.5)
+    ctx.stroke()
+    ctx.restore()
+    _smooth(ctx, body, closed=False)
+    _c(ctx, OUT)
+    ctx.set_line_width(LW)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    ctx.stroke()
+    # shoulder seams with stitching
+    for sx in (-1, 1):
+        ctx.move_to(sx * 150, -330)
+        ctx.curve_to(sx * 230, -318, sx * 300, -292, sx * 345, -268)
+        _c(ctx, TEE_SH)
+        ctx.set_line_width(4)
+        ctx.stroke()
+        ctx.save()
+        ctx.set_dash([6, 5])
+        ctx.move_to(sx * 152, -322)
+        ctx.curve_to(sx * 230, -310, sx * 298, -284, sx * 342, -260)
+        _c(ctx, STITCH, 0.8)
+        ctx.set_line_width(1.8)
+        ctx.stroke()
+        ctx.restore()
+    # chest print: small distressed coin logo with ₽ and an arc of text
+    px, py = 175, -205
+    ctx.arc(px, py, 34, 0, 2 * math.pi)
+    _c(ctx, (0.86, 0.72, 0.30), 0.92)
+    ctx.fill()
+    ctx.arc(px, py, 27, 0, 2 * math.pi)
+    _c(ctx, TEE_C)
     ctx.set_line_width(2.5)
     ctx.stroke()
-    ctx.restore()
-    # chest patch: small embroidered coin with a ruble sign
-    px, py = 190, -215
-    ctx.arc(px, py, 30, 0, 2 * math.pi)
-    _c(ctx, (0.85, 0.68, 0.22))
-    ctx.fill_preserve()
-    _c(ctx, OUT)
-    ctx.set_line_width(4)
+    ctx.move_to(px - 7, py + 18)
+    ctx.line_to(px - 7, py - 16)
+    ctx.curve_to(px + 15, py - 18, px + 15, py + 2, px - 7, py)
+    ctx.move_to(px - 15, py + 8)
+    ctx.line_to(px + 6, py + 8)
+    _c(ctx, TEE_C)
+    ctx.set_line_width(5)
     ctx.stroke()
+    r = _rng(4)  # print wear: small specks of shirt colour
+    for _ in range(14):
+        a, rr = r.uniform(0, 2 * math.pi), r.uniform(0, 34)
+        ctx.arc(px + rr * math.cos(a), py + rr * math.sin(a), r.uniform(0.6, 1.6), 0, 2 * math.pi)
+    _c(ctx, TEE_C, 0.8)
+    ctx.fill()
+    # crew-neck collar: ribbed band around the neck base with double stitch
     ctx.save()
-    ctx.set_dash([4, 4])
-    ctx.arc(px, py, 24, 0, 2 * math.pi)
-    _c(ctx, (0.55, 0.40, 0.08))
-    ctx.set_line_width(2)
+    _ellipse(ctx, 0, -326, 122, 40)
+    _ellipse(ctx, 0, -330, 92, 26)
+    ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+    _c(ctx, (0.12, 0.13, 0.155))
+    ctx.fill_preserve()
+    ctx.clip()
+    for k in range(-30, 31):  # rib lines radiating around the band
+        a = math.pi / 2 + k * 0.105
+        ctx.move_to(92 * math.cos(a), -330 + 26 * math.sin(a))
+        ctx.line_to(122 * math.cos(a), -326 + 40 * math.sin(a))
+    _c(ctx, (0.22, 0.23, 0.27), 0.8)
+    ctx.set_line_width(1.6)
     ctx.stroke()
     ctx.restore()
-    ctx.move_to(px - 6, py + 16)
-    ctx.line_to(px - 6, py - 14)
-    ctx.curve_to(px + 14, py - 16, px + 14, py + 2, px - 6, py)
-    ctx.move_to(px - 13, py + 7)
-    ctx.line_to(px + 6, py + 7)
-    _c(ctx, (0.30, 0.20, 0.03))
-    ctx.set_line_width(4)
+    _ellipse(ctx, 0, -326, 122, 40)
+    _c(ctx, OUT)
+    ctx.set_line_width(5)
     ctx.stroke()
-    # metal grommets where the drawstrings come out
-    for sx in (-70, 70):
-        ctx.arc(sx, -300, 11, 0, 2 * math.pi)
-        _c(ctx, (0.70, 0.72, 0.76))
-        ctx.fill_preserve()
-        _c(ctx, OUT)
-        ctx.set_line_width(3)
+    for rx, ry, dy in ((112, 35, -326), (104, 31, -327)):
+        ctx.save()
+        ctx.set_dash([5, 4])
+        ctx.save()
+        ctx.translate(0, dy)
+        ctx.scale(rx, ry)
+        ctx.arc(0, 0, 1, 0.05 * math.pi, 0.95 * math.pi)
+        ctx.restore()
+        _c(ctx, STITCH, 0.9)
+        ctx.set_line_width(1.6)
         ctx.stroke()
-        ctx.arc(sx, -300, 5, 0, 2 * math.pi)
-        _c(ctx, (0.10, 0.10, 0.12))
-        ctx.fill()
-    # drawstrings
-    for sx in (-70, 70):
-        ctx.move_to(sx, -300)
-        ctx.curve_to(sx + 6, -230, sx - 8, -170, sx + 4, -110)
-        _c(ctx, (0.85, 0.85, 0.82))
-        ctx.set_line_width(9)
-        ctx.stroke()
-        ctx.rectangle(sx - 5, -122, 18, 30)
-        _fill_stroke(ctx, (0.72, 0.74, 0.78), 4)
-        ctx.rectangle(sx - 1, -118, 4, 22)
-        _c(ctx, (1, 1, 1), 0.7)
-        ctx.fill()
+        ctx.restore()
     ctx.restore()
 
 
@@ -974,67 +989,147 @@ def _nose_mouth(ctx, emo, level):
 
 
 # ----------------------------------------------------------------- arms and hands
-def _sleeve(ctx, pts, w=138, fill=None):
-    """Thick hoodie sleeve along a polyline: outline, body, top highlight, elbow creases, ribbed cuff."""
-    ctx.new_path()
-    ctx.move_to(*pts[0])
-    for p in pts[1:]:
-        ctx.line_to(*p)
-    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
-    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-    _c(ctx, OUT)
-    ctx.set_line_width(w + 2 * LW)
-    ctx.stroke_preserve()
-    _c(ctx, fill or HOOD_HI)
-    ctx.set_line_width(w)
-    ctx.stroke_preserve()
-    # soft highlight along the upper side of the fabric
+def _arm_tattoo(ctx, pts, w, word):
+    """Blackletter word along the forearm (last segment), same black-and-grey style as the neck lettering."""
+    if pts[-1][1] > 100:  # hanging arm: forearm is below the frame, use the visible upper arm under the sleeve
+        (x0, y0), (x1, y1) = pts[0], pts[1]
+        f0, f1 = 0.5, 1.0
+    else:
+        (x0, y0), (x1, y1) = pts[-2], pts[-1]
+        f0, f1 = 0.08, 0.72  # nearer the elbow so the hand does not cover it
+    a = math.atan2(y1 - y0, x1 - x0)
+    flip = math.cos(a) < 0  # keep the word upright
+    ln = math.hypot(x1 - x0, y1 - y0) * (f1 - f0) / 0.62 * 0.62
+    fm = (f0 + f1) / 2
     ctx.save()
-    ctx.translate(-w * 0.12, -w * 0.16)
-    _c(ctx, (1, 1, 1), 0.07)
-    ctx.set_line_width(w * 0.35)
+    ctx.translate(x0 + (x1 - x0) * fm, y0 + (y1 - y0) * fm)
+    ctx.rotate(a + (math.pi if flip else 0))
+    ctx.select_font_face(TATTOO_FONT, cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+    size = w * 0.5
+    ctx.set_font_size(size)
+    ext = ctx.text_extents(word)
+    if ext.x_advance > ln * 0.9:
+        size *= ln * 0.9 / ext.x_advance
+        ctx.set_font_size(size)
+        ext = ctx.text_extents(word)
+    ctx.new_path()
+    ctx.move_to(-ext.x_advance / 2, size * 0.32)
+    ctx.text_path(word)
+    path = ctx.copy_path()
+    ctx.push_group()
+    ctx.append_path(path)
+    _c(ctx, T_INK, 0.25)
+    ctx.set_line_width(2.5)
+    ctx.stroke()
+    ctx.append_path(path)
+    _c(ctx, T_INK)
+    ctx.fill()
+    ctx.append_path(path)
+    ctx.save()
+    ctx.clip()
+    g = cairo.LinearGradient(0, -size * 0.6, 0, size * 0.35)
+    g.add_color_stop_rgba(0, 0.5, 0.5, 0.53, 0)
+    g.add_color_stop_rgba(0.55, 0.5, 0.5, 0.53, 0)
+    g.add_color_stop_rgba(1, 0.52, 0.52, 0.55, 0.75)
+    ctx.set_source(g)
+    ctx.paint()
+    ctx.restore()
+    ctx.pop_group_to_source()
+    ctx.paint_with_alpha(0.9)
+    ctx.restore()
+
+
+def _sleeve(ctx, pts, w=138, fill=None):
+    """T-shirt arm: bare skin limb (upper arm -> forearm, tapered) with a short sleeve over the upper arm,
+    elbow crease, muscle shading and a lettering tattoo on the forearm."""
+    side = 0 if pts[0][0] < 0 else 1
+    widths = [w * 0.92 if i == 0 else w * 0.8 for i in range(len(pts) - 1)]
+    # outline pass then skin pass, segment by segment so the arm tapers
+    for pass_ in (0, 1):
+        for i in range(len(pts) - 1):
+            ctx.move_to(*pts[i])
+            ctx.line_to(*pts[i + 1])
+            ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+            if pass_ == 0:
+                _c(ctx, OUT)
+                ctx.set_line_width(widths[i] + 2 * LW)
+            else:
+                _c(ctx, SKIN)
+                ctx.set_line_width(widths[i])
+            ctx.stroke()
+    # underside shading along each segment
+    for i in range(len(pts) - 1):
+        (x0, y0), (x1, y1) = pts[i], pts[i + 1]
+        a = math.atan2(y1 - y0, x1 - x0)
+        nx, ny = -math.sin(a), math.cos(a)
+        o = widths[i] * 0.3
+        ctx.move_to(x0 + nx * o, y0 + ny * o)
+        ctx.line_to(x1 + nx * o, y1 + ny * o)
+        _c(ctx, SKIN_SH, 0.55)
+        ctx.set_line_width(widths[i] * 0.3)
+        ctx.stroke()
+    # elbow crease
+    if len(pts) > 2:
+        ex, ey = pts[1]
+        ctx.move_to(ex - 12, ey - 6)
+        ctx.curve_to(ex - 4, ey + 4, ex + 6, ey + 4, ex + 12, ey - 4)
+        _c(ctx, SKIN_SH)
+        ctx.set_line_width(3.5)
+        ctx.stroke()
+    _arm_tattoo(ctx, pts, widths[-1], ARM_TATTOOS[side])
+    # short sleeve: rounded shoulder cap from the shoulder seam down ~45% of the upper arm
+    (x0, y0), (x1, y1) = pts[0], pts[1]
+    a = math.atan2(y1 - y0, x1 - x0)
+    ln = math.hypot(x1 - x0, y1 - y0) * 0.45
+    sw = widths[0] + 34
+    up = -1 if math.sin(a) > 0 else 1  # which side of the sleeve faces up (gets the shoulder cap)
+
+    def shape():
+        ctx.move_to(-sw * 0.25, -up * sw * 0.5)
+        ctx.curve_to(-sw * 0.6, -up * sw * 0.25, -sw * 0.55, up * sw * 0.35, -sw * 0.05, up * sw * 0.55)
+        ctx.line_to(ln, up * (sw * 0.5 + 4))
+        ctx.curve_to(ln + 12, up * sw * 0.2, ln + 12, -up * sw * 0.2, ln, -up * (sw * 0.5 + 4))
+        ctx.close_path()
+    ctx.save()
+    ctx.translate(x0, y0)
+    ctx.rotate(a)
+    shape()
+    _c(ctx, fill if fill and fill != HOOD_HI else TEE_C)
+    ctx.fill_preserve()
+    ctx.save()
+    ctx.clip()
+    g = cairo.LinearGradient(0, -sw / 2, 0, sw / 2)
+    g.add_color_stop_rgba(0, 1, 1, 1, 0.08 if up < 0 else 0)
+    g.add_color_stop_rgba(0.5, 0, 0, 0, 0)
+    g.add_color_stop_rgba(1, 0, 0, 0, 0.45 if up < 0 else 0.1)
+    ctx.set_source(g)
+    ctx.paint()
+    for k in range(3):  # fabric folds
+        fx = ln * (0.2 + 0.25 * k)
+        ctx.move_to(fx, -sw / 2)
+        ctx.curve_to(fx + 10, -sw / 6, fx - 6, sw / 6, fx + 6, sw / 2)
+    _c(ctx, TEE_SH)
+    ctx.set_line_width(3)
+    ctx.stroke()
+    ctx.move_to(ln - 18, -sw)
+    ctx.line_to(ln - 18, sw)
+    ctx.line_to(ln + 20, sw)
+    ctx.line_to(ln + 20, -sw)
+    ctx.close_path()
+    _c(ctx, (0.12, 0.13, 0.155))
+    ctx.fill()
+    ctx.set_dash([5, 4])
+    for d in (-12, -5):
+        ctx.move_to(ln + d, -sw / 2)
+        ctx.line_to(ln + d, sw / 2)
+    _c(ctx, STITCH, 0.9)
+    ctx.set_line_width(1.6)
     ctx.stroke()
     ctx.restore()
-    ctx.new_path()
-    # creases at each bend (elbow)
-    for i in range(1, len(pts) - 1):
-        (x0, y0), (x1, y1), (x2, y2) = pts[i - 1], pts[i], pts[i + 1]
-        a1 = math.atan2(y1 - y0, x1 - x0)
-        a2 = math.atan2(y2 - y1, x2 - x1)
-        bis = (a1 + a2) / 2 + math.pi / 2
-        for k, off in enumerate((-0.18, 0.0, 0.18)):
-            cx = x1 + math.cos(a1) * off * w
-            cy = y1 + math.sin(a1) * off * w
-            ctx.move_to(cx + math.cos(bis) * w * 0.38, cy + math.sin(bis) * w * 0.38)
-            ctx.curve_to(cx + math.cos(bis) * w * 0.1 + 6, cy + math.sin(bis) * w * 0.1,
-                         cx - math.cos(bis) * w * 0.05, cy - math.sin(bis) * w * 0.05,
-                         cx - math.cos(bis) * w * (0.2 + 0.08 * k), cy - math.sin(bis) * w * (0.2 + 0.08 * k))
-        _c(ctx, HOOD_SH, 0.9)
-        ctx.set_line_width(5)
-        ctx.stroke()
-    # ribbed cuff
-    x, y = pts[-1]
-    px, py = pts[-2]
-    a = math.atan2(y - py, x - px)
-    ctx.save()
-    ctx.translate(x, y)
-    ctx.rotate(a)
-    rrect_ = (-34, -w / 2 + 2, 38, w - 4)
-    ctx.new_path()
-    r = 10
-    x0, y0, cw, ch = rrect_
-    ctx.arc(x0 + cw - r, y0 + r, r, -math.pi / 2, 0)
-    ctx.arc(x0 + cw - r, y0 + ch - r, r, 0, math.pi / 2)
-    ctx.arc(x0 + r, y0 + ch - r, r, math.pi / 2, math.pi)
-    ctx.arc(x0 + r, y0 + r, r, math.pi, 1.5 * math.pi)
-    ctx.close_path()
-    _fill_stroke(ctx, HOOD_SH, 6)
-    for k in range(1, 6):
-        yy = y0 + ch * k / 6
-        ctx.move_to(x0 + 6, yy)
-        ctx.line_to(x0 + cw - 6, yy)
-    _c(ctx, (0.05, 0.05, 0.07), 0.6)
-    ctx.set_line_width(3)
+    shape()
+    _c(ctx, OUT)
+    ctx.set_line_width(LW)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     ctx.stroke()
     ctx.restore()
 
@@ -1177,8 +1272,17 @@ def _arm(ctx, pts, kind, s=1.5, flip=1, dang=0.0, w=138, fill=None):
     _hand(ctx, x1 - math.cos(a) * 6, y1 - math.sin(a) * 6, a + dang, kind, s, flip)
 
 
+POSE_SIDES = {"idle": (), "explain_low": (), "think": (-1,), "cross": (-1, 1), "explain": (1,), "shrug": (-1, 1),
+              "point": (1,), "facepalm": (-1,)}
+
+
 def _arms(ctx, pose, t, front):
-    """Arms over the torso for each pose; hands are attached to the cuffs automatically."""
+    """Arms over the torso for each pose; hands are attached to the cuffs automatically.
+    Arms not used by the pose hang down at the sides so the t-shirt sleeves are always visible."""
+    used = POSE_SIDES.get(pose, ())
+    for sx in (-1, 1):
+        if sx not in used:
+            _sleeve(ctx, [(sx * 345, -262), (sx * 392, -40), (sx * 400, 220)])
     w = math.sin(t * 2.0) * 6
     if pose in ("idle", "explain_low"):
         return
