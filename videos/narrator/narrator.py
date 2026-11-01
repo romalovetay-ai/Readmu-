@@ -428,86 +428,154 @@ def _lock(ctx, bx, by, ang, ln, wd, bend, fill, lw=6):
     ctx.stroke()
 
 
-# messy crown: (angle deg, length, width, bend) — uneven on purpose
-CROWN = [(-128, 95, 46, 30), (-112, 140, 52, -35), (-96, 120, 50, 40), (-80, 175, 58, -25), (-63, 150, 55, 50),
-         (-47, 205, 60, -40), (-30, 160, 56, 35), (-14, 230, 62, -55), (2, 185, 58, 45), (17, 240, 64, 60),
-         (33, 170, 56, -45), (49, 215, 60, 40), (64, 140, 54, -30), (80, 185, 56, 55), (97, 125, 50, -40),
-         (113, 150, 50, 35), (128, 90, 44, -25)]
+H_DEEP = (0.70, 0.52, 0.22)
+H_SHADOW = (0.86, 0.70, 0.34)
+H_BASE = (0.97, 0.86, 0.50)
+H_LIGHT = (1.0, 0.92, 0.62)
+H_SHINE = (1.0, 0.98, 0.86)
 
 
-def _hair_back(ctx, t, sway):
-    _ellipse(ctx, 0, -660, 240, 232)
-    _c(ctx, HAIR_SH)
+def _clump_path(ctx, bx, by, ang, ln, wd, bend, fork):
+    """Ragged tapered hair clump; fork > 0 splits the tip into two points."""
+    dx, dy = math.sin(ang), -math.cos(ang)
+    nx, ny = math.cos(ang), math.sin(ang)
+
+    def P(u, v):  # u along the clump 0..1, v across -1..1 (scaled by width that tapers)
+        w = wd * (1 - u ** 1.7) * (0.92 + 0.08 * math.sin(u * 9))
+        b = bend * u * u * 1.4
+        return (bx + dx * ln * u + nx * (v * w + b), by + dy * ln * u + ny * (v * w + b))
+    tipL = P(1.0, 0)
+    left = [P(u, -1) for u in (0.0, 0.2, 0.4, 0.6, 0.78, 0.9)]
+    right = [P(u, 1) for u in (0.9, 0.78, 0.6, 0.4, 0.2, 0.0)]
+    _smooth(ctx, left, closed=False)
+    if fork:
+        notch = P(0.8 - fork * 0.08, 0.2)
+        t2 = P(0.93, 0.6)
+        ctx.line_to(tipL[0] - nx * wd * 0.1, tipL[1] - ny * wd * 0.1)
+        ctx.line_to(*notch)
+        ctx.line_to(t2[0] + dx * ln * 0.05, t2[1] + dy * ln * 0.05)
+    else:
+        ctx.line_to(*tipL)
+    ctx.line_to(*right[0])
+    x0, y0 = right[0]
+    for k in range(len(right) - 1):  # smooth back along the right edge
+        p0 = right[max(0, k - 1)]
+        p1, p2 = right[k], right[k + 1]
+        p3 = right[min(len(right) - 1, k + 2)]
+        c1 = (p1[0] + (p2[0] - p0[0]) * 0.22, p1[1] + (p2[1] - p0[1]) * 0.22)
+        c2 = (p2[0] - (p3[0] - p1[0]) * 0.22, p2[1] - (p3[1] - p1[1]) * 0.22)
+        ctx.curve_to(c1[0], c1[1], c2[0], c2[1], p2[0], p2[1])
+    ctx.close_path()
+    return P
+
+
+def _clump(ctx, bx, by, ang, ln, wd, bend, fork=0, tone=0, lw=5.5, shade_side=1):
+    """Cel-shaded clump: base fill, shadow band on one side, light band, shine streak, inner strand lines, outline."""
+    base = (H_SHADOW, H_BASE, H_LIGHT)[tone]
+    P = _clump_path(ctx, bx, by, ang, ln, wd, bend, fork)
+    _c(ctx, base)
+    ctx.fill_preserve()
+    ctx.save()
+    ctx.clip()
+    # shadow band along one edge + darker root
+    s = shade_side
+    ctx.move_to(*P(0, s * 1.2))
+    for u in (0.25, 0.5, 0.75, 1.0):
+        ctx.line_to(*P(u, s * 0.25))
+    for u in (1.0, 0.75, 0.5, 0.25, 0.0):
+        ctx.line_to(*P(u, s * 1.3))
+    ctx.close_path()
+    _c(ctx, H_SHADOW if tone else H_DEEP, 0.9)
     ctx.fill()
-    for i, (ang, ln, wd, bend) in enumerate(CROWN):
-        a = math.radians(ang + sway * (1 + i % 3) + 2.5 * math.sin(t * 1.2 + i * 0.7))
-        bx, by = 205 * math.sin(a), -660 - 205 * math.cos(a)
-        _lock(ctx, bx, by, a, ln * 0.55, wd * 1.15, bend * 0.35 + 5 * math.sin(t * 1.5 + i), HAIR_SH if i % 3 == 0 else HAIR)
+    g = cairo.LinearGradient(*P(0, 0), *P(0.35, 0))
+    g.add_color_stop_rgba(0, H_DEEP[0], H_DEEP[1], H_DEEP[2], 0.75)
+    g.add_color_stop_rgba(1, H_DEEP[0], H_DEEP[1], H_DEEP[2], 0)
+    ctx.set_source(g)
+    ctx.paint()
+    # light band on the other side
+    ctx.move_to(*P(0.15, -s * 0.15))
+    for u in (0.35, 0.6, 0.85):
+        ctx.line_to(*P(u, -s * (0.05 + 0.1 * u)))
+    for u in (0.85, 0.6, 0.35, 0.15):
+        ctx.line_to(*P(u, -s * 0.75))
+    ctx.close_path()
+    _c(ctx, H_LIGHT if tone < 2 else H_SHINE, 0.85)
+    ctx.fill()
+    # shine streak
+    ctx.move_to(*P(0.22, -s * 0.45))
+    a, b = P(0.4, -s * 0.5), P(0.55, -s * 0.42)
+    ctx.curve_to(a[0], a[1], a[0], a[1], b[0], b[1])
+    _c(ctx, H_SHINE, 0.95)
+    ctx.set_line_width(max(2.5, wd * 0.09))
+    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+    ctx.stroke()
+    ctx.restore()
+    # inner strand lines
+    for v, u1 in ((-0.35, 0.82), (0.1, 0.92), (0.5, 0.7)):
+        a, b, c_ = P(0.12, v), P(0.5, v * 0.7), P(u1, v * 0.35)
+        ctx.move_to(*a)
+        ctx.curve_to(b[0], b[1], b[0], b[1], c_[0], c_[1])
+    _c(ctx, H_DEEP, 0.7)
+    ctx.set_line_width(2.2)
+    ctx.stroke()
+    _clump_path(ctx, bx, by, ang, ln, wd, bend, fork)
+    _c(ctx, OUT)
+    ctx.set_line_width(lw)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    ctx.stroke()
 
 
-FRINGE = [  # (base x, base y, angle rad (0=up, pi=down), length, width, bend, colour index)
-    (-200, -735, 2.80, 120, 44, -45, 0), (-140, -760, 3.00, 150, 50, 40, 1), (-75, -770, 3.30, 135, 48, -38, 0),
-    (-10, -775, 2.95, 160, 52, 50, 1), (55, -770, 3.40, 140, 48, -45, 0), (120, -760, 3.10, 155, 50, 38, 1),
-    (180, -740, 3.55, 120, 44, -40, 0), (220, -705, 3.80, 90, 36, 30, 1),
+# back silhouette: (angle deg from up, length, width, bend, fork)
+HAIR_BACK = [(-118, 120, 62, 26, 0), (-100, 160, 70, -30, 1), (-82, 190, 72, 34, 0), (-64, 175, 70, -28, 1),
+             (-46, 215, 74, 30, 0), (-28, 185, 70, -36, 1), (-10, 235, 76, 28, 0), (8, 200, 72, -30, 1),
+             (26, 245, 76, 40, 0), (44, 195, 72, -34, 1), (62, 215, 72, 30, 0), (80, 170, 68, -28, 1),
+             (98, 175, 66, 34, 0), (116, 120, 60, -24, 1)]
+# top layer: clumps flowing from the crown whorl over the skull towards the hairline
+HAIR_TOP = [(-185, -780, -1.75, 120, 62, -40, 1), (-140, -835, -2.15, 130, 66, -34, 0), (-80, -870, -2.55, 120, 64, -30, 1),
+            (-15, -885, -2.95, 110, 62, -26, 0), (50, -882, 2.85, 115, 62, 28, 1), (115, -860, 2.45, 125, 66, 32, 0),
+            (170, -820, 2.05, 120, 62, 36, 1), (210, -760, 1.7, 105, 56, 34, 0)]
+# spiky clumps standing up on the crown
+HAIR_SPIKES = [(-60, -880, -0.45, 95, 40, -18, 1), (20, -900, 0.05, 105, 42, 16, 0), (95, -880, 0.55, 95, 40, 20, 1)]
+FRINGE = [  # (base x, base y, angle rad (0=up, pi=down), length, width, bend, fork)
+    (-200, -735, 2.80, 130, 50, -45, 0), (-140, -760, 3.00, 160, 56, 40, 1), (-75, -770, 3.30, 145, 54, -38, 0),
+    (-10, -775, 2.95, 170, 58, 50, 1), (55, -770, 3.40, 150, 54, -45, 0), (120, -760, 3.10, 165, 56, 38, 1),
+    (180, -740, 3.55, 125, 50, -40, 0), (220, -705, 3.80, 95, 42, 30, 1),
 ]
 
 
+def _hair_back(ctx, t, sway):
+    _ellipse(ctx, 0, -665, 245, 235)
+    _c(ctx, H_DEEP)
+    ctx.fill()
+    for i, (ang, ln, wd, bend, fork) in enumerate(HAIR_BACK):
+        a = math.radians(ang + sway * (1 + i % 3) + 2.0 * math.sin(t * 1.2 + i * 0.7))
+        bx, by = 195 * math.sin(a), -665 - 195 * math.cos(a)
+        _clump(ctx, bx, by, a, ln * 0.62, wd, bend * 0.5 + 4 * math.sin(t * 1.5 + i), fork, 0,
+               shade_side=1 if ang < 0 else -1)
+
+
 def _hair_front(ctx, t, sway):
-    cols = (HAIR, (0.99, 0.89, 0.58))
-    for i, (bx, by, ang, ln, wd, bend, ci) in enumerate(FRINGE):
-        b = bend + sway * 8 + 5 * math.sin(t * 1.6 + i * 1.1)
-        a = ang + 0.03 * math.sin(t + i)
-        _lock(ctx, bx, by, a, ln, wd, b, cols[ci], 6)
-        dx, dy = math.sin(a), -math.cos(a)
-        nx, ny = math.cos(a), math.sin(a)
-        for off in (-0.25, 0.2):
-            ctx.move_to(bx + nx * wd * off, by + ny * wd * off)
-            ctx.curve_to(bx + dx * ln * 0.4 + nx * (b * 0.5 + wd * off), by + dy * ln * 0.4 + ny * (b * 0.5 + wd * off),
-                         bx + dx * ln * 0.7 + nx * b * 0.8, by + dy * ln * 0.7 + ny * b * 0.8,
-                         bx + dx * ln * 0.85 + nx * b * 0.9, by + dy * ln * 0.85 + ny * b * 0.9)
-        _c(ctx, HAIR_SH, 0.8)
-        ctx.set_line_width(3)
-        ctx.stroke()
-    # hair mass on the skull, filled without an outline so locks seem to grow out of it
+    # skull cover under the top clumps (no flat helmet visible: clumps sit on it edge to edge)
     _smooth(ctx, [(-236, -650), (-234, -748), (-180, -835), (-90, -878), (10, -890), (110, -872), (190, -820),
                   (234, -740), (238, -660), (190, -712), (120, -742), (40, -755), (-50, -752), (-140, -738),
                   (-200, -706)], closed=True)
-    g = cairo.RadialGradient(-30, -860, 20, 0, -780, 300)
-    g.add_color_stop_rgb(0, 1.0, 0.93, 0.66)
-    g.add_color_stop_rgb(0.45, *HAIR)
-    g.add_color_stop_rgb(1, 0.82, 0.66, 0.32)
-    ctx.set_source(g)
+    _c(ctx, H_SHADOW)
     ctx.fill()
-    # parting grooves between big locks on the top, for volume
-    for (x0, y0, x1, y1, x2, y2) in ((-40, -880, -110, -830, -170, -745), (30, -885, 10, -820, -30, -760),
-                                     (80, -875, 130, -820, 170, -750), (-120, -860, -190, -800, -215, -720)):
-        ctx.move_to(x0, y0)
-        ctx.curve_to(x1, y1, x1, y1, x2, y2)
-        _c(ctx, (0.80, 0.63, 0.28), 0.75)
-        ctx.set_line_width(6)
-        ctx.stroke()
-        ctx.move_to(x0 + 8, y0 + 4)
-        ctx.curve_to(x1 + 10, y1 + 4, x1 + 10, y1 + 4, x2 + 10, y2)
-        _c(ctx, (1, 0.96, 0.78), 0.5)
-        ctx.set_line_width(4)
-        ctx.stroke()
-    # locks sticking out of the top in odd directions
-    for i, (bx, by, ang, ln, wd, bend) in enumerate(((-70, -860, -0.55, 80, 32, -14), (75, -858, 0.65, 95, 32, 16),
-                                                    (5, -875, 0.05, 70, 28, 10))):
-        _lock(ctx, bx, by, ang + 0.06 * math.sin(t * 1.4 + i), ln, wd, bend, HAIR, 6)
-    # highlights
-    for (x0, y0, x1, y1) in ((-140, -820, -70, -804), (30, -850, 120, -822), (-50, -792, 0, -786)):
-        ctx.move_to(x0, y0)
-        ctx.curve_to(x0 + 20, y0 + 10, x1 - 20, y1 - 6, x1, y1)
-        _c(ctx, HAIR_HI)
-        ctx.set_line_width(11)
-        ctx.stroke()
-    # stray hairs
-    for (x0, y0, dx, dy) in ((-60, -880, -55, -50), (90, -872, 70, -40), (0, -886, 15, -70), (205, -780, 60, -20)):
+    for i, (bx, by, ang, ln, wd, bend, fork) in enumerate(HAIR_TOP):
+        _clump(ctx, bx, by, ang + 0.03 * math.sin(t * 1.1 + i), ln, wd, bend + sway * 5, fork, 1,
+               shade_side=-1 if bx < 0 else 1)
+    for i, (bx, by, ang, ln, wd, bend, fork) in enumerate(FRINGE):
+        b = bend + sway * 8 + 5 * math.sin(t * 1.6 + i * 1.1)
+        _clump(ctx, bx, by, ang + 0.03 * math.sin(t + i), ln, wd, b, fork, 2 if i % 2 else 1,
+               shade_side=1 if i % 2 else -1)
+    for i, (bx, by, ang, ln, wd, bend, fork) in enumerate(HAIR_SPIKES):
+        _clump(ctx, bx, by, ang + 0.06 * math.sin(t * 1.4 + i), ln, wd, bend, fork, 2, shade_side=-1 if ang < 0 else 1)
+    # a few loose strays
+    for (x0, y0, dx, dy) in ((-60, -890, -55, -50), (90, -880, 70, -40), (205, -790, 60, -20), (-210, -770, -55, -15)):
         ctx.move_to(x0, y0)
         ctx.curve_to(x0 + dx * 0.3, y0 + dy * 0.6, x0 + dx * 0.8, y0 + dy * 0.8, x0 + dx + 4 * math.sin(t * 2), y0 + dy)
         _c(ctx, OUT)
-        ctx.set_line_width(4)
+        ctx.set_line_width(3.5)
         ctx.stroke()
 
 
