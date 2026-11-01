@@ -554,6 +554,104 @@ def _ears(ctx):
         ctx.stroke()
 
 
+def _crystal(ctx, x, y, w, h, ang=0.0):
+    """Faceted drop crystal hanging from (x,y): table on top, pavilion to a point, facets, glints."""
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(ang)
+    top, girdle, tip = (0, 0), h * 0.32, h
+    L, R = (-w / 2, girdle), (w / 2, girdle)
+    crown = [(-w * 0.28, 0), (w * 0.28, 0), R, (0, tip), L]
+    ctx.move_to(*crown[0])
+    for pt in crown[1:]:
+        ctx.line_to(*pt)
+    ctx.close_path()
+    g = cairo.LinearGradient(-w / 2, 0, w / 2, tip)
+    g.add_color_stop_rgb(0, 0.88, 0.97, 1.0)
+    g.add_color_stop_rgb(0.45, 0.55, 0.80, 0.98)
+    g.add_color_stop_rgb(1, 0.30, 0.52, 0.86)
+    ctx.set_source(g)
+    ctx.fill_preserve()
+    _c(ctx, OUT)
+    ctx.set_line_width(2.6)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    ctx.stroke()
+    # facets: girdle line and lines to the point / table
+    for a, b in ((L, R), ((-w * 0.28, 0), (-w * 0.12, girdle)), ((w * 0.28, 0), (w * 0.12, girdle)),
+                 ((-w * 0.12, girdle), (0, tip)), ((w * 0.12, girdle), (0, tip)), (L, (0, tip * 0.7)),
+                 (R, (0, tip * 0.7))):
+        ctx.move_to(*a)
+        ctx.line_to(*b)
+    _c(ctx, (0.18, 0.32, 0.55), 0.7)
+    ctx.set_line_width(1.3)
+    ctx.stroke()
+    # bright facets
+    ctx.move_to(-w * 0.28, 0)
+    ctx.line_to(-w * 0.12, girdle)
+    ctx.line_to(L[0], L[1])
+    ctx.close_path()
+    _c(ctx, (1, 1, 1), 0.75)
+    ctx.fill()
+    ctx.move_to(w * 0.12, girdle)
+    ctx.line_to(0, tip)
+    ctx.line_to(0, tip * 0.7)
+    ctx.close_path()
+    _c(ctx, (0.85, 0.95, 1.0), 0.6)
+    ctx.fill()
+    ctx.restore()
+
+
+def _sparkle(ctx, x, y, r, a=1.0):
+    ctx.move_to(x, y - r)
+    ctx.curve_to(x + r * 0.12, y - r * 0.12, x + r * 0.12, y - r * 0.12, x + r, y)
+    ctx.curve_to(x + r * 0.12, y + r * 0.12, x + r * 0.12, y + r * 0.12, x, y + r)
+    ctx.curve_to(x - r * 0.12, y + r * 0.12, x - r * 0.12, y + r * 0.12, x - r, y)
+    ctx.curve_to(x - r * 0.12, y - r * 0.12, x - r * 0.12, y - r * 0.12, x, y - r)
+    ctx.close_path()
+    _c(ctx, (1, 1, 1), a)
+    ctx.fill()
+
+
+def _earrings(ctx, t):
+    """Crystal earring in each lobe: faceted stud + short chain + swinging drop crystal, with a glint."""
+    for sx in (-1, 1):
+        lx, ly = sx * 238, -562
+        # stud
+        ctx.arc(lx, ly, 9, 0, 2 * math.pi)
+        g = cairo.RadialGradient(lx - 3, ly - 3, 1, lx, ly, 9)
+        g.add_color_stop_rgb(0, 1, 1, 1)
+        g.add_color_stop_rgb(1, 0.55, 0.80, 0.98)
+        ctx.set_source(g)
+        ctx.fill_preserve()
+        _c(ctx, OUT)
+        ctx.set_line_width(2.4)
+        ctx.stroke()
+        for k in range(4):
+            a = k * math.pi / 4
+            ctx.move_to(lx - 7 * math.cos(a), ly - 7 * math.sin(a))
+            ctx.line_to(lx + 7 * math.cos(a), ly + 7 * math.sin(a))
+        _c(ctx, (0.25, 0.42, 0.70), 0.6)
+        ctx.set_line_width(1)
+        ctx.stroke()
+        # chain links and the swinging drop
+        swing = 0.18 * math.sin(t * 2.3 + sx)
+        cx, cy = lx, ly + 9
+        for k in range(3):
+            nx_, ny_ = cx + math.sin(swing) * 7, cy + math.cos(swing) * 7
+            _ellipse(ctx, (cx + nx_) / 2, (cy + ny_) / 2, 2.6, 4)
+            _c(ctx, (0.78, 0.80, 0.86))
+            ctx.fill_preserve()
+            _c(ctx, OUT)
+            ctx.set_line_width(1.2)
+            ctx.stroke()
+            cx, cy = nx_, ny_
+        _crystal(ctx, cx, cy, 24, 40, -swing)
+        # glint that twinkles
+        tw = 0.5 + 0.5 * math.sin(t * 3.1 + sx * 1.7)
+        _sparkle(ctx, cx + 6 - 12 * swing, cy + 12, 6 + 5 * tw, 0.6 + 0.4 * tw)
+        _sparkle(ctx, lx - 4, ly - 4, 3 + 3 * (1 - tw), 0.9)
+
+
 FACE = [(-218, -700), (-222, -600), (-200, -510), (-140, -440), (-60, -405), (0, -400), (60, -405),
         (140, -440), (200, -510), (222, -600), (218, -700), (150, -770), (0, -790), (-150, -770)]
 
@@ -1055,6 +1153,7 @@ def draw(ctx, cx, base_y, scale, state):
     _hair_back(ctx, t, sway)
     _ears(ctx)
     _face_shape(ctx)
+    _earrings(ctx, t)
     _eyes(ctx, emo, t, look, state.get("blink"))
     _nose_mouth(ctx, emo, level)
     _hair_front(ctx, t, sway)
