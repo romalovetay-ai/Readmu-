@@ -392,7 +392,7 @@ def s_comment(ctx, b, tl, t, lv):
 
 def s_chart(ctx, b, tl, t, lv):
     fmt = {"pct": lambda v: f"{v}%", "pctpm": lambda v: f"{v:+g}%"}.get(b.get("fmt"), str)
-    text(ctx, b.get("title", ""), 700, 190, 46, F_SB, GREY, clamp(tl / 0.3))
+    text(ctx, b.get("title", ""), 700, 140, 46, F_SB, GREY, clamp(tl / 0.3))
     a = age(b, 1, tl) if 1 in b["anchors"] else tl
     gfx.line_chart(ctx, 180, 300, 1060, 520, b["series"], a + 0.3, color=GOLD, fmt=fmt, dur=2.2,
                    marks=tuple(range(len(b["series"]))), ymax=100 if b.get("fmt") == "pct" else None)
