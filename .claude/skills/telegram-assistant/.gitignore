@@ -1,0 +1,18 @@
+# Generated style guides (user-specific, but keep template)
+references/style-guide.md
+references/style-guide-*.md
+!references/style-guide-template.md
+
+# Draft posts
+references/draft-*.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
