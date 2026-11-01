@@ -60,6 +60,11 @@ def _smooth(ctx, pts, closed=True, k=0.22):
         ctx.close_path()
 
 
+def _rng(seed):
+    import random
+    return random.Random(seed)
+
+
 def _ellipse(ctx, x, y, rx, ry):
     ctx.save()
     ctx.translate(x, y)
@@ -94,6 +99,16 @@ def _torso(ctx, breathe):
     # inner collar of the white tee
     _smooth(ctx, [(-120, -330), (0, -265), (120, -330), (60, -350), (0, -340), (-60, -350)], closed=True)
     _fill_stroke(ctx, TEE, 5)
+    ctx.move_to(-104, -326)
+    ctx.curve_to(-50, -286, 50, -286, 104, -326)
+    _c(ctx, (0.78, 0.78, 0.76))
+    ctx.set_line_width(3)
+    ctx.stroke()
+    # inner lining of the hood, slightly lighter, with a fold line
+    _smooth(ctx, [(-200, -350), (-120, -388), (0, -396), (120, -388), (200, -350), (120, -370), (0, -376),
+                  (-120, -370)], closed=True)
+    _c(ctx, (0.30, 0.32, 0.38), 0.9)
+    ctx.fill()
     # shoulder seams and chest folds
     for sx in (-1, 1):
         ctx.move_to(sx * 235, -335)
@@ -118,6 +133,54 @@ def _torso(ctx, breathe):
     _c(ctx, HOOD_SH)
     ctx.set_line_width(5)
     ctx.stroke()
+    # double stitching along seams (dashed)
+    ctx.save()
+    ctx.set_dash([7, 6])
+    for sx in (-1, 1):
+        ctx.move_to(sx * 245, -332)
+        ctx.curve_to(sx * 292, -248, sx * 312, -150, sx * 322, -40)
+    ctx.move_to(-188, 40)
+    ctx.curve_to(-170, -30, -142, -58, -104, -62)
+    ctx.line_to(104, -62)
+    ctx.curve_to(142, -58, 170, -30, 188, 40)
+    _c(ctx, (0.36, 0.38, 0.44), 0.9)
+    ctx.set_line_width(2.5)
+    ctx.stroke()
+    ctx.restore()
+    # chest patch: small embroidered coin with a ruble sign
+    px, py = 190, -215
+    ctx.arc(px, py, 30, 0, 2 * math.pi)
+    _c(ctx, (0.85, 0.68, 0.22))
+    ctx.fill_preserve()
+    _c(ctx, OUT)
+    ctx.set_line_width(4)
+    ctx.stroke()
+    ctx.save()
+    ctx.set_dash([4, 4])
+    ctx.arc(px, py, 24, 0, 2 * math.pi)
+    _c(ctx, (0.55, 0.40, 0.08))
+    ctx.set_line_width(2)
+    ctx.stroke()
+    ctx.restore()
+    ctx.move_to(px - 6, py + 16)
+    ctx.line_to(px - 6, py - 14)
+    ctx.curve_to(px + 14, py - 16, px + 14, py + 2, px - 6, py)
+    ctx.move_to(px - 13, py + 7)
+    ctx.line_to(px + 6, py + 7)
+    _c(ctx, (0.30, 0.20, 0.03))
+    ctx.set_line_width(4)
+    ctx.stroke()
+    # metal grommets where the drawstrings come out
+    for sx in (-70, 70):
+        ctx.arc(sx, -300, 11, 0, 2 * math.pi)
+        _c(ctx, (0.70, 0.72, 0.76))
+        ctx.fill_preserve()
+        _c(ctx, OUT)
+        ctx.set_line_width(3)
+        ctx.stroke()
+        ctx.arc(sx, -300, 5, 0, 2 * math.pi)
+        _c(ctx, (0.10, 0.10, 0.12))
+        ctx.fill()
     # drawstrings
     for sx in (-70, 70):
         ctx.move_to(sx, -300)
@@ -149,48 +212,182 @@ def _neck(ctx):
     _tattoo(ctx)
 
 
-def _tattoo(ctx):
-    """Swallow and two stars on the right side of the neck (viewer's right)."""
+T_NAVY = (0.10, 0.10, 0.12)
+T_BLUE = (0.42, 0.42, 0.45)
+T_RED = (0.30, 0.30, 0.33)
+T_CREAM = (0.96, 0.80, 0.68)  # left as bare skin (negative space)
+T_INK = (0.06, 0.07, 0.10)
+
+
+def _feather(ctx, bx, by, tx, ty, w, fill=T_NAVY, edge=T_BLUE):
+    """One long feather: a lens from base to tip with a light edge band and a quill line."""
+    a = math.atan2(ty - by, tx - bx)
+    ln = math.hypot(tx - bx, ty - by)
     ctx.save()
-    ctx.translate(40, -372)
-    ctx.rotate(-0.35)
-    ctx.scale(0.9, 0.9)
-    _c(ctx, INK, 0.92)
-    ctx.set_line_width(5)
-    # swallow body + wings + forked tail
-    ctx.move_to(-40, 0)
-    ctx.curve_to(-20, -18, 10, -20, 30, -8)
-    ctx.curve_to(18, -2, 8, 4, -2, 8)
-    ctx.curve_to(10, 20, 22, 34, 20, 52)
-    ctx.curve_to(4, 36, -10, 22, -18, 12)
-    ctx.curve_to(-26, 26, -44, 36, -60, 40)
-    ctx.curve_to(-48, 24, -42, 12, -40, 0)
+    ctx.translate(bx, by)
+    ctx.rotate(a)
+    ctx.move_to(0, -w * 0.4)
+    ctx.curve_to(ln * 0.35, -w, ln * 0.8, -w * 0.7, ln, 0)
+    ctx.curve_to(ln * 0.8, w * 0.55, ln * 0.35, w * 0.8, 0, w * 0.4)
     ctx.close_path()
+    _c(ctx, fill)
     ctx.fill_preserve()
+    ctx.save()
+    ctx.clip()
+    ctx.move_to(ln * 0.1, -w * 0.62)
+    ctx.curve_to(ln * 0.4, -w * 0.95, ln * 0.8, -w * 0.62, ln * 1.02, 0)
+    _c(ctx, edge)
+    ctx.set_line_width(w * 0.55)
     ctx.stroke()
-    ctx.move_to(-40, 0)
-    ctx.curve_to(-60, -30, -40, -60, -10, -62)
-    ctx.curve_to(-20, -40, -14, -20, -4, -12)
+    ctx.restore()
+    _c(ctx, T_INK)
+    ctx.set_line_width(2.6)
+    ctx.stroke()
+    ctx.move_to(ln * 0.05, 0)
+    ctx.curve_to(ln * 0.4, -w * 0.15, ln * 0.7, -w * 0.1, ln * 0.92, 0)
+    for k in range(1, 6):  # barbs
+        u = k / 6.5
+        ctx.move_to(ln * u, -w * 0.08)
+        ctx.line_to(ln * (u + 0.07), -w * 0.55 * (1 - u * 0.6))
+        ctx.move_to(ln * u, w * 0.05)
+        ctx.line_to(ln * (u + 0.06), w * 0.4 * (1 - u * 0.6))
+    _c(ctx, T_INK, 0.6)
+    ctx.set_line_width(1.2)
+    ctx.stroke()
+    ctx.restore()
+
+
+def _nautical_star(ctx, x, y, r, rot=0.0):
+    pts = []
+    for k in range(10):
+        a = -math.pi / 2 + rot + k * math.pi / 5
+        rr = r if k % 2 == 0 else r * 0.42
+        pts.append((x + rr * math.cos(a), y + rr * math.sin(a)))
+    # two-tone halves of each point
+    for k in range(0, 10, 2):
+        tip, lft, rgt = pts[k], pts[k - 1], pts[(k + 1) % 10]
+        for side, col in ((lft, T_NAVY), (rgt, T_RED)):
+            ctx.move_to(x, y)
+            ctx.line_to(*tip)
+            ctx.line_to(*side)
+            ctx.close_path()
+            _c(ctx, col)
+            ctx.fill()
+    ctx.move_to(*pts[0])
+    for p in pts[1:]:
+        ctx.line_to(*p)
     ctx.close_path()
-    ctx.fill()
-    # feather lines on the wing and tail in skin colour
-    for (x0, y0, x1, y1) in ((-34, -18, -20, -46), (-26, -12, -12, -40), (-18, -8, -6, -30), (4, 30, 14, 46),
-                             (-40, 26, -54, 36)):
-        ctx.move_to(x0, y0)
-        ctx.line_to(x1, y1)
-    _c(ctx, SKIN, 0.55)
-    ctx.set_line_width(2.5)
+    for k in range(0, 10, 2):
+        ctx.move_to(x, y)
+        ctx.line_to(*pts[k])
+    _c(ctx, T_INK)
+    ctx.set_line_width(2.2)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     ctx.stroke()
-    _c(ctx, INK, 0.92)
-    # stars
-    for (sx, sy, r) in ((34, -46, 12), (54, -16, 8)):
-        ctx.new_path()
-        for k in range(10):
-            a = -math.pi / 2 + k * math.pi / 5
-            rr = r if k % 2 == 0 else r * 0.45
-            ctx.line_to(sx + rr * math.cos(a), sy + rr * math.sin(a))
-        ctx.close_path()
+
+
+def _tattoo(ctx):
+    """Old-school swallow with feathered wings, forked tail, red throat, plus two nautical stars, on the neck."""
+    ctx.save()
+    # keep the ink on the skin: clip to the neck shape
+    _smooth(ctx, [(-78, -470), (-82, -360), (-60, -318), (0, -300), (60, -318), (82, -360), (78, -470)], closed=False)
+    ctx.close_path()
+    ctx.clip()
+    ctx.translate(8, -385)
+    ctx.rotate(-0.32)
+    ctx.scale(0.72, 0.72)
+    ctx.push_group()
+    # upper wing (behind the body): four primaries fanning up-right
+    for (tx, ty, w) in ((26, -84, 22), (46, -90, 24), (64, -82, 24), (80, -64, 22)):
+        _feather(ctx, -6, -14, tx, ty, w)
+    # forked tail
+    _feather(ctx, 30, 8, 104, 0, 15)
+    _feather(ctx, 28, 16, 98, 38, 15)
+    # body
+    ctx.move_to(-66, -18)
+    ctx.curve_to(-40, -38, 12, -28, 46, 6)
+    ctx.curve_to(22, 32, -32, 32, -64, 8)
+    ctx.close_path()
+    _c(ctx, T_NAVY)
+    ctx.fill_preserve()
+    _c(ctx, T_INK)
+    ctx.set_line_width(2.8)
+    ctx.stroke()
+    # cream belly
+    ctx.move_to(-34, 12)
+    ctx.curve_to(-10, 26, 18, 22, 38, 8)
+    ctx.curve_to(16, 14, -8, 14, -34, 12)
+    ctx.close_path()
+    _c(ctx, T_CREAM)
+    ctx.fill_preserve()
+    _c(ctx, T_INK)
+    ctx.set_line_width(2)
+    ctx.stroke()
+    # red throat and breast
+    ctx.move_to(-66, -2)
+    ctx.curve_to(-60, 14, -42, 20, -26, 14)
+    ctx.curve_to(-34, 6, -44, -2, -52, -6)
+    ctx.close_path()
+    _c(ctx, T_RED)
+    ctx.fill_preserve()
+    _c(ctx, T_INK)
+    ctx.set_line_width(2)
+    ctx.stroke()
+    # lower wing (in front): three feathers sweeping back and down
+    for (tx, ty, w) in ((64, 30, 19), (54, 46, 19), (38, 54, 17)):
+        _feather(ctx, -10, 4, tx, ty, w)
+    # covert feathers: small scalloped rows near the shoulder
+    for k in range(4):
+        ctx.arc(-4 + k * 9, -6 + k * 3, 7, 0.2 * math.pi, 1.1 * math.pi)
+    _c(ctx, T_INK)
+    ctx.set_line_width(1.6)
+    ctx.stroke()
+    # head
+    ctx.arc(-56, -12, 15, 0, 2 * math.pi)
+    _c(ctx, T_NAVY)
+    ctx.fill_preserve()
+    _c(ctx, T_INK)
+    ctx.set_line_width(2.6)
+    ctx.stroke()
+    # beak
+    ctx.move_to(-68, -18)
+    ctx.line_to(-86, -12)
+    ctx.line_to(-69, -8)
+    ctx.close_path()
+    _c(ctx, T_INK)
+    ctx.fill()
+    # eye
+    ctx.arc(-60, -15, 4.6, 0, 2 * math.pi)
+    _c(ctx, T_CREAM)
+    ctx.fill()
+    ctx.arc(-60.5, -15, 2.6, 0, 2 * math.pi)
+    _c(ctx, T_INK)
+    ctx.fill()
+    ctx.arc(-59.4, -16.2, 0.9, 0, 2 * math.pi)
+    _c(ctx, (1, 1, 1))
+    ctx.fill()
+    # dotwork shading: fine stipple at the wing root and along the underside, fading out
+    r = _rng(5)
+    for _ in range(60):
+        u = r.random()
+        x = -12 + u * 30 + r.gauss(0, 3)
+        y = -16 + r.gauss(0, 4) - u * 8
+        ctx.arc(x, y, r.uniform(0.5, 1.0) * (1.2 - u), 0, 2 * math.pi)
+    for _ in range(40):
+        x = r.uniform(-40, 30)
+        y = 22 + r.gauss(0, 2)
+        ctx.arc(x, y, r.uniform(0.4, 0.9), 0, 2 * math.pi)
+    _c(ctx, T_INK, 0.55)
+    ctx.fill()
+    # stars and dots
+    _nautical_star(ctx, 70, -24, 15, 0.2)
+    _nautical_star(ctx, 100, -46, 9, -0.3)
+    for (dx, dy, rr) in ((86, -8, 2.5), (110, -22, 2), (116, -62, 1.8)):
+        ctx.arc(dx, dy, rr, 0, 2 * math.pi)
+        _c(ctx, T_INK)
         ctx.fill()
+    ctx.pop_group_to_source()
+    ctx.paint_with_alpha(0.9)  # healed-ink look: slightly sunk into the skin
     ctx.restore()
 
 
@@ -210,7 +407,25 @@ def _lock(ctx, bx, by, ang, ln, wd, bend, fill, lw=6):
     ctx.curve_to(m2[0] - dx * ln * 0.15, m2[1] - dy * ln * 0.15, bx + nx * wd + dx * ln * 0.25,
                  by + ny * wd + dy * ln * 0.25, bx + nx * wd, by + ny * wd)
     ctx.close_path()
-    _fill_stroke(ctx, fill, lw)
+    g = cairo.LinearGradient(bx, by, tx, ty)
+    dark = tuple(c * 0.78 for c in fill)
+    light = tuple(min(1.0, c * 1.07 + 0.04) for c in fill)
+    g.add_color_stop_rgb(0, *dark)
+    g.add_color_stop_rgb(0.55, *fill)
+    g.add_color_stop_rgb(1, *light)
+    ctx.set_source(g)
+    ctx.fill_preserve()
+    _c(ctx, OUT)
+    ctx.set_line_width(lw)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    ctx.stroke()
+    # a soft rim light along one edge of the lock for volume
+    ctx.move_to(bx + nx * wd * 0.5, by + ny * wd * 0.5)
+    ctx.curve_to(m2[0] - nx * wd * 0.15, m2[1] - ny * wd * 0.15, tx - dx * ln * 0.25, ty - dy * ln * 0.25,
+                 tx - dx * ln * 0.08, ty - dy * ln * 0.08)
+    _c(ctx, (1, 0.97, 0.85), 0.45)
+    ctx.set_line_width(max(2.0, wd * 0.12))
+    ctx.stroke()
 
 
 # messy crown: (angle deg, length, width, bend) — uneven on purpose
@@ -257,8 +472,25 @@ def _hair_front(ctx, t, sway):
     _smooth(ctx, [(-236, -650), (-234, -748), (-180, -835), (-90, -878), (10, -890), (110, -872), (190, -820),
                   (234, -740), (238, -660), (190, -712), (120, -742), (40, -755), (-50, -752), (-140, -738),
                   (-200, -706)], closed=True)
-    _c(ctx, HAIR)
+    g = cairo.RadialGradient(-30, -860, 20, 0, -780, 300)
+    g.add_color_stop_rgb(0, 1.0, 0.93, 0.66)
+    g.add_color_stop_rgb(0.45, *HAIR)
+    g.add_color_stop_rgb(1, 0.82, 0.66, 0.32)
+    ctx.set_source(g)
     ctx.fill()
+    # parting grooves between big locks on the top, for volume
+    for (x0, y0, x1, y1, x2, y2) in ((-40, -880, -110, -830, -170, -745), (30, -885, 10, -820, -30, -760),
+                                     (80, -875, 130, -820, 170, -750), (-120, -860, -190, -800, -215, -720)):
+        ctx.move_to(x0, y0)
+        ctx.curve_to(x1, y1, x1, y1, x2, y2)
+        _c(ctx, (0.80, 0.63, 0.28), 0.75)
+        ctx.set_line_width(6)
+        ctx.stroke()
+        ctx.move_to(x0 + 8, y0 + 4)
+        ctx.curve_to(x1 + 10, y1 + 4, x1 + 10, y1 + 4, x2 + 10, y2)
+        _c(ctx, (1, 0.96, 0.78), 0.5)
+        ctx.set_line_width(4)
+        ctx.stroke()
     # locks sticking out of the top in odd directions
     for i, (bx, by, ang, ln, wd, bend) in enumerate(((-70, -860, -0.55, 80, 32, -14), (75, -858, 0.65, 95, 32, 16),
                                                     (5, -875, 0.05, 70, 28, 10))):
@@ -437,6 +669,15 @@ def _eyes(ctx, emo, t, look, blink_override):
         _c(ctx, (0.62, 0.48, 0.22))
         ctx.set_line_width(14)
         ctx.stroke()
+        for k in range(7):  # individual brow hairs
+            u = k / 6
+            hx = x_out + (x_in - x_out) * u
+            hy = by + 8 - 12 * math.sin(u * math.pi) + (4 - inner) * u
+            ctx.move_to(hx - sx * 6, hy + 6)
+            ctx.line_to(hx + sx * 8, hy - 8)
+        _c(ctx, (0.45, 0.33, 0.12), 0.8)
+        ctx.set_line_width(2.5)
+        ctx.stroke()
 
 
 def _nose_mouth(ctx, emo, level):
@@ -478,6 +719,11 @@ def _nose_mouth(ctx, emo, level):
         ctx.set_line_width(6)
         ctx.stroke()
         return
+    ctx.move_to(mx - 18, my + 22)
+    ctx.curve_to(mx - 6, my + 30, mx + 8, my + 30, mx + 20, my + 22)
+    _c(ctx, SKIN_SH)
+    ctx.set_line_width(4)
+    ctx.stroke()
     _c(ctx, OUT)
     ctx.set_line_width(7)
     if mouth == "flat":
@@ -504,7 +750,7 @@ def _nose_mouth(ctx, emo, level):
 
 
 # ----------------------------------------------------------------- arms and hands
-def _sleeve(ctx, pts, w=110, fill=None):
+def _sleeve(ctx, pts, w=138, fill=None):
     """Thick hoodie sleeve along a polyline: outline, body, top highlight, elbow creases, ribbed cuff."""
     ctx.new_path()
     ctx.move_to(*pts[0])
@@ -699,7 +945,7 @@ def _hand(ctx, x, y, ang, kind="open", s=1.0, flip=1):
     ctx.restore()
 
 
-def _arm(ctx, pts, kind, s=1.5, flip=1, dang=0.0, w=110, fill=None):
+def _arm(ctx, pts, kind, s=1.5, flip=1, dang=0.0, w=138, fill=None):
     """Sleeve along pts, then the hand coming straight out of the cuff along the forearm."""
     _sleeve(ctx, pts, w, fill)
     (x0, y0), (x1, y1) = pts[-2], pts[-1]
@@ -713,26 +959,48 @@ def _arms(ctx, pose, t, front):
     if pose in ("idle", "explain_low"):
         return
     if pose == "think":
-        _arm(ctx, [(-330, -260), (-260, -80), (-120, -240), (-75, -365)], "chin", 1.45, -1, 0.15)
+        _arm(ctx, [(-330, -260), (-260, -80), (-120, -240), (-75, -365)], "chin", 1.67, -1, 0.15)
     elif pose == "cross":
-        _arm(ctx, [(-345, -265), (-300, -110), (150, -200)], "fist", 1.3, 1, 0.0, 118, (0.22, 0.235, 0.28))
-        _sleeve(ctx, [(345, -265), (300, -80), (-140, -150)], 118)
+        _arm(ctx, [(-345, -265), (-300, -110), (150, -200)], "fist", 1.49, 1, 0.0, 140, (0.22, 0.235, 0.28))
+        _sleeve(ctx, [(345, -265), (300, -80), (-140, -150)], 140)
         for fx in (40, 120):
             ctx.move_to(fx, -150 + (fx - 40) * 0.12)
             ctx.curve_to(fx + 10, -125, fx + 5, -105, fx - 8, -92)
             _c(ctx, HOOD_SH)
             ctx.set_line_width(5)
             ctx.stroke()
-        _hand(ctx, -150, -152, math.atan2(-70, -440), "fist", 1.3, -1)
+        _hand(ctx, -150, -152, math.atan2(-70, -440), "fist", 1.49, -1)
     elif pose == "explain":
-        _arm(ctx, [(330, -260), (300, -60), (420, -230 + w)], "open", 1.5, -1, -0.15)
+        _arm(ctx, [(330, -260), (300, -60), (420, -230 + w)], "open", 1.72, -1, -0.15)
     elif pose == "shrug":
-        _arm(ctx, [(-330, -260), (-330, -90), (-470, -210 + w)], "open", 1.45, 1, 0.25)
-        _arm(ctx, [(330, -260), (330, -90), (470, -210 - w)], "open", 1.45, -1, -0.25)
+        _arm(ctx, [(-330, -260), (-330, -90), (-470, -210 + w)], "open", 1.67, 1, 0.25)
+        _arm(ctx, [(330, -260), (330, -90), (470, -210 - w)], "open", 1.67, -1, -0.25)
     elif pose == "point":
-        _arm(ctx, [(330, -260), (330, -100), (440, -370 + w)], "point", 1.5, -1, -0.1)
+        _arm(ctx, [(330, -260), (330, -100), (440, -370 + w)], "point", 1.72, -1, -0.1)
     elif pose == "facepalm":
-        _arm(ctx, [(-330, -260), (-240, -80), (-110, -320), (-70, -470)], "flat", 1.7, -1, 0.05)
+        _arm(ctx, [(-330, -260), (-240, -80), (-110, -320), (-70, -470)], "flat", 1.95, -1, 0.05)
+
+
+GESTURES = ["explain", "point", "shrug", "explain", "think", "cross", "explain", "point"]
+TALK_EMOS = {"neutral": ["neutral", "smirk", "doubt", "smirk"], "smirk": ["smirk", "happy", "smirk", "doubt"],
+             "doubt": ["doubt", "smirk", "doubt", "wow"], "sad": ["sad", "doubt", "sad", "angry"],
+             "angry": ["angry", "angry", "wow", "angry"], "wow": ["wow", "smirk", "wow", "happy"],
+             "happy": ["happy", "smirk", "happy", "wow"]}
+
+
+def perform(t, level, pose="explain", emo="neutral", seed=0, hold=2.6):
+    """Make the narrator act while talking: change gesture every ~hold seconds, shift expression,
+    tilt and nod the head with speech. Returns a state dict for draw(). Use it for every talking shot."""
+    k = int((t + seed * 1.37) / hold)
+    talking = level > 0.08
+    p = pose
+    if talking and pose in ("idle", "explain"):
+        p = GESTURES[(k + seed) % len(GESTURES)]
+    emos = TALK_EMOS.get(emo, TALK_EMOS["neutral"])
+    e = emos[(k + seed) % len(emos)] if talking else emo
+    tilt = 0.05 * math.sin(t * 0.9 + seed) + (0.04 * math.sin(t * 3.1) * level)
+    look = 0.35 * math.sin(t * 0.45 + seed)
+    return {"pose": p, "emo": e, "t": t, "level": level, "look": look, "tilt": tilt}
 
 
 def draw(ctx, cx, base_y, scale, state):
