@@ -612,44 +612,68 @@ def _sparkle(ctx, x, y, r, a=1.0):
     ctx.fill()
 
 
+def _drop(ctx, x, y, w, h, ang=0.0):
+    """Teardrop crystal hanging from (x,y): pointed top, round bottom, faceted, with highlights."""
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(ang)
+    r = w / 2
+    cy = h - r
+
+    def outline():
+        ctx.move_to(0, 0)
+        ctx.curve_to(r * 0.35, h * 0.25, r, cy - r * 0.6, r, cy)
+        ctx.arc(0, cy, r, 0, math.pi)
+        ctx.curve_to(-r, cy - r * 0.6, -r * 0.35, h * 0.25, 0, 0)
+        ctx.close_path()
+    outline()
+    g = cairo.RadialGradient(-r * 0.35, cy - r * 0.4, 1, 0, cy, r * 1.4)
+    g.add_color_stop_rgb(0, 0.92, 0.98, 1.0)
+    g.add_color_stop_rgb(0.5, 0.58, 0.82, 0.99)
+    g.add_color_stop_rgb(1, 0.28, 0.50, 0.85)
+    ctx.set_source(g)
+    ctx.fill_preserve()
+    ctx.save()
+    ctx.clip()
+    # facets: lines from the tip and a ring of facets around the bottom
+    for k in (-0.6, -0.2, 0.2, 0.6):
+        ctx.move_to(0, 2)
+        ctx.line_to(k * r, cy + r * 0.2)
+    ctx.arc(0, cy, r * 0.55, 0.15 * math.pi, 0.85 * math.pi)
+    for k in range(5):
+        a = (0.15 + 0.175 * k) * math.pi
+        ctx.move_to(r * 0.55 * math.cos(a), cy + r * 0.55 * math.sin(a))
+        ctx.line_to(r * math.cos(a), cy + r * math.sin(a))
+    _c(ctx, (0.20, 0.36, 0.62), 0.55)
+    ctx.set_line_width(1.2)
+    ctx.stroke()
+    # bright facet on the left and a soft reflection on the right
+    ctx.move_to(0, 2)
+    ctx.line_to(-r * 0.2, cy + r * 0.2)
+    ctx.line_to(-r * 0.95, cy - r * 0.1)
+    ctx.close_path()
+    _c(ctx, (1, 1, 1), 0.7)
+    ctx.fill()
+    _ellipse(ctx, r * 0.4, cy + r * 0.35, r * 0.18, r * 0.32)
+    _c(ctx, (0.85, 0.95, 1.0), 0.6)
+    ctx.fill()
+    ctx.restore()
+    outline()
+    _c(ctx, OUT)
+    ctx.set_line_width(2.4)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    ctx.stroke()
+    ctx.restore()
+
+
 def _earrings(ctx, t):
-    """Crystal earring in each lobe: faceted stud + short chain + swinging drop crystal, with a glint."""
+    """A teardrop crystal hanging straight from each earlobe, swinging slightly, with a twinkle."""
     for sx in (-1, 1):
-        lx, ly = sx * 238, -562
-        # stud
-        ctx.arc(lx, ly, 9, 0, 2 * math.pi)
-        g = cairo.RadialGradient(lx - 3, ly - 3, 1, lx, ly, 9)
-        g.add_color_stop_rgb(0, 1, 1, 1)
-        g.add_color_stop_rgb(1, 0.55, 0.80, 0.98)
-        ctx.set_source(g)
-        ctx.fill_preserve()
-        _c(ctx, OUT)
-        ctx.set_line_width(2.4)
-        ctx.stroke()
-        for k in range(4):
-            a = k * math.pi / 4
-            ctx.move_to(lx - 7 * math.cos(a), ly - 7 * math.sin(a))
-            ctx.line_to(lx + 7 * math.cos(a), ly + 7 * math.sin(a))
-        _c(ctx, (0.25, 0.42, 0.70), 0.6)
-        ctx.set_line_width(1)
-        ctx.stroke()
-        # chain links and the swinging drop
-        swing = 0.18 * math.sin(t * 2.3 + sx)
-        cx, cy = lx, ly + 9
-        for k in range(3):
-            nx_, ny_ = cx + math.sin(swing) * 7, cy + math.cos(swing) * 7
-            _ellipse(ctx, (cx + nx_) / 2, (cy + ny_) / 2, 2.6, 4)
-            _c(ctx, (0.78, 0.80, 0.86))
-            ctx.fill_preserve()
-            _c(ctx, OUT)
-            ctx.set_line_width(1.2)
-            ctx.stroke()
-            cx, cy = nx_, ny_
-        _crystal(ctx, cx, cy, 24, 40, -swing)
-        # glint that twinkles
+        lx, ly = sx * 238, -560
+        swing = 0.14 * math.sin(t * 2.3 + sx)
+        _drop(ctx, lx, ly, 22, 40, -swing)
         tw = 0.5 + 0.5 * math.sin(t * 3.1 + sx * 1.7)
-        _sparkle(ctx, cx + 6 - 12 * swing, cy + 12, 6 + 5 * tw, 0.6 + 0.4 * tw)
-        _sparkle(ctx, lx - 4, ly - 4, 3 + 3 * (1 - tw), 0.9)
+        _sparkle(ctx, lx - 5 + 30 * swing, ly + 24, 4 + 5 * tw, 0.55 + 0.45 * tw)
 
 
 FACE = [(-218, -700), (-222, -600), (-200, -510), (-140, -440), (-60, -405), (0, -400), (60, -405),
