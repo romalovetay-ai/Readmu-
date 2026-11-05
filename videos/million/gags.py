@@ -207,7 +207,7 @@ def g_dream(ctx, w, h, tl, t):
     rgba(ctx, (0.40, 0.40, 0.45))
     ctx.fill()
     mini_guy(ctx, w * 0.30, h * 0.62, 1.0, "happy", 0.5, hair=(0.96, 0.84, 0.47), shirt=(0.85, 0.35, 0.30), t=t)
-    k = ease(tl / 0.8)
+    k = max(0.02, ease(tl / 0.8))
     for i, (dx, dy, r) in enumerate(((60, -110, 10), (90, -150, 16))):
         ell(ctx, w * 0.30 + dx, h * 0.62 + dy, r * k, r * k)
         fs(ctx, WHITE, 4)
