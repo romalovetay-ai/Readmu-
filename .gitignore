@@ -37,3 +37,10 @@ research/kvartira_src/transcribe.log
 !videos/kvartira/out/brand_banner.jpg
 !videos/kvartira/out/char_before_after.jpg
 !videos/kvartira/out/char_poses.jpg
+
+research/video2_src/*.mov
+research/video2_src/*.wav
+
+# million video: caches and renders
+videos/million/cache/
+videos/million/out/*

@@ -34,17 +34,22 @@ def _run(self, output_names, input_feed, *a, **k):
 
 
 _ort.InferenceSession.run = _run
-REPO, CKPT, VOCAB = "ESpeech/ESpeech-TTS-1_podcaster", "espeech_tts_podcaster.pt", "vocab.txt"
+MODELS = {
+    "podcaster": ("ESpeech/ESpeech-TTS-1_podcaster", "espeech_tts_podcaster.pt", "vocab.txt"),       # Apache-2.0
+    "emotional": ("Andreevai/f5-tts-russian-emotional", "model.safetensors", "vocab.txt"),           # MIT, theatrical
+}
+REPO, CKPT, VOCAB = MODELS["podcaster"]
 CFG = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
 
 
 class Voice:
-    def __init__(self, ref_wav, ref_text, accent=True):
+    def __init__(self, ref_wav, ref_text, accent=True, model="podcaster"):
         from huggingface_hub import hf_hub_download
         from f5_tts.infer.utils_infer import load_model, load_vocoder, preprocess_ref_audio_text
         from f5_tts.model import DiT
-        ck = hf_hub_download(REPO, CKPT)
-        vo = hf_hub_download(REPO, VOCAB)
+        repo, ckpt, vocab = MODELS[model]
+        ck = hf_hub_download(repo, ckpt)
+        vo = hf_hub_download(repo, vocab)
         self.model = load_model(DiT, CFG, ck, vocab_file=vo, device="cpu")
         self.vocoder = load_vocoder(device="cpu")
         self.acc = None
