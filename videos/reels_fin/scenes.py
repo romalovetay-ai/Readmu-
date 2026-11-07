@@ -672,9 +672,12 @@ def draw(ctx, b, tl, t, level, beats):
     z = 1.0 + 0.025 * (1 - ease(tl / 0.5))
     ctx.save()
     if b.get("style") == "shout":
-        k = 0.6 + 0.4 * level
-        ctx.translate(14 * k * math.sin(t * 61), 10 * k * math.cos(t * 47))
-        z += 0.03 * level
+        # soft camera push-in that eases in over the first half-second, plus a slow gentle sway (no shaking)
+        push = ease(tl / 0.5)
+        z += 0.035 * push + 0.012 * level
+        ctx.translate(W / 2, H / 2)
+        ctx.rotate(0.006 * math.sin(t * 1.8))
+        ctx.translate(-W / 2, -H / 2)
     ctx.translate(W / 2, H / 2)
     ctx.scale(z, z)
     ctx.translate(-W / 2, -H / 2)
@@ -685,7 +688,12 @@ def draw(ctx, b, tl, t, level, beats):
     draw_char(ctx, b, tl, t, level)
     ctx.restore()
     if b.get("style") == "shout":
-        rgba(ctx, RED, 0.06 + 0.12 * level)
+        # red glow only around the edges of the frame, breathing slowly with the voice
+        k = clamp(tl / 0.4) * (0.55 + 0.25 * level + 0.1 * math.sin(t * 3))
+        g = cairo.RadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, W * 0.6)
+        g.add_color_stop_rgba(0, RED[0], RED[1], RED[2], 0)
+        g.add_color_stop_rgba(1, RED[0], RED[1], RED[2], 0.75 * k)
+        ctx.set_source(g)
         ctx.paint()
     if b.get("darken"):
         rgba(ctx, (0, 0, 0), 0.4 * clamp(tl / 1.5))

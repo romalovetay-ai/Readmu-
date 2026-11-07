@@ -97,8 +97,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     fc.append(f"[comp]ass='{ass}'[out]")
     out = os.path.join(DST, name + ".mp4")
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *parts, "-filter_complex", ";".join(fc),
-                    "-map", "[out]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "21",
-                    "-pix_fmt", "yuv420p", "-r", "25", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out],
+                    "-map", "[out]", "-map", "[a]", "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                    "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out],
                    check=True)
     print(f"{name}: {total:.1f}s -> {out}", flush=True)
 

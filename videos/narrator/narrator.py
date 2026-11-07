@@ -1272,41 +1272,67 @@ def _arm(ctx, pts, kind, s=1.5, flip=1, dang=0.0, w=138, fill=None):
     _hand(ctx, x1 - math.cos(a) * 6, y1 - math.sin(a) * 6, a + dang, kind, s, flip)
 
 
-POSE_SIDES = {"idle": (), "explain_low": (), "think": (-1,), "cross": (-1, 1), "explain": (1,), "shrug": (-1, 1),
-              "point": (1,), "facepalm": (-1,)}
+REST = {sx: [(sx * 345, -262), (sx * 380, -100), (sx * 395, 60), (sx * 400, 220)] for sx in (-1, 1)}
+# pose -> {side: (points, hand kind or None, hand scale, flip, extra angle, sleeve fill)} ; draw order = dict order
+POSES = {
+    "idle": {},
+    "explain_low": {},
+    "think": {-1: ([(-330, -260), (-260, -80), (-120, -240), (-75, -365)], "chin", 1.67, -1, 0.15, None)},
+    "cross": {-1: ([(-345, -265), (-320, -190), (-300, -110), (150, -200)], "fist", 1.49, 1, 0.0, (0.22, 0.235, 0.28)),
+              1: ([(345, -265), (322, -170), (300, -80), (-140, -150)], "fist", 1.49, -1, 0.0, None)},
+    "explain": {1: ([(330, -260), (315, -160), (300, -60), (420, -230)], "open", 1.72, -1, -0.15, None)},
+    "shrug": {-1: ([(-330, -260), (-330, -175), (-330, -90), (-470, -210)], "open", 1.67, 1, 0.25, None),
+              1: ([(330, -260), (330, -175), (330, -90), (470, -210)], "open", 1.67, -1, -0.25, None)},
+    "point": {1: ([(330, -260), (330, -180), (330, -100), (440, -370)], "point", 1.72, -1, -0.1, None)},
+    "facepalm": {-1: ([(-330, -260), (-240, -80), (-110, -320), (-70, -470)], "flat", 1.95, -1, 0.05, None)},
+}
+POSE_SIDES = {k: tuple(v) for k, v in POSES.items()}
 
 
-def _arms(ctx, pose, t, front):
-    """Arms over the torso for each pose; hands are attached to the cuffs automatically.
-    Arms not used by the pose hang down at the sides so the t-shirt sleeves are always visible."""
-    used = POSE_SIDES.get(pose, ())
-    for sx in (-1, 1):
-        if sx not in used:
-            _sleeve(ctx, [(sx * 345, -262), (sx * 392, -40), (sx * 400, 220)])
-    w = math.sin(t * 2.0) * 6
-    if pose in ("idle", "explain_low"):
-        return
-    if pose == "think":
-        _arm(ctx, [(-330, -260), (-260, -80), (-120, -240), (-75, -365)], "chin", 1.67, -1, 0.15)
-    elif pose == "cross":
-        _arm(ctx, [(-345, -265), (-300, -110), (150, -200)], "fist", 1.49, 1, 0.0, 140, (0.22, 0.235, 0.28))
-        _sleeve(ctx, [(345, -265), (300, -80), (-140, -150)], 140)
-        for fx in (40, 120):
-            ctx.move_to(fx, -150 + (fx - 40) * 0.12)
-            ctx.curve_to(fx + 10, -125, fx + 5, -105, fx - 8, -92)
-            _c(ctx, HOOD_SH)
-            ctx.set_line_width(5)
-            ctx.stroke()
-        _hand(ctx, -150, -152, math.atan2(-70, -440), "fist", 1.49, -1)
-    elif pose == "explain":
-        _arm(ctx, [(330, -260), (300, -60), (420, -230 + w)], "open", 1.72, -1, -0.15)
-    elif pose == "shrug":
-        _arm(ctx, [(-330, -260), (-330, -90), (-470, -210 + w)], "open", 1.67, 1, 0.25)
-        _arm(ctx, [(330, -260), (330, -90), (470, -210 - w)], "open", 1.67, -1, -0.25)
-    elif pose == "point":
-        _arm(ctx, [(330, -260), (330, -100), (440, -370 + w)], "point", 1.72, -1, -0.1)
-    elif pose == "facepalm":
-        _arm(ctx, [(-330, -260), (-240, -80), (-110, -320), (-70, -470)], "flat", 1.95, -1, 0.05)
+def _smoothstep(u):
+    u = max(0.0, min(1.0, u))
+    return u * u * (3 - 2 * u)
+
+
+def _arm_spec(pose, sx):
+    spec = POSES.get(pose, {}).get(sx)
+    if spec is None:
+        return (REST[sx], None, 1.6, -sx, 0.0, None)
+    return spec
+
+
+def _lerp_pts(a, b, u):
+    return [(ax + (bx - ax) * u, ay + (by - ay) * u) for (ax, ay), (bx, by) in zip(a, b)]
+
+
+def _arms(ctx, pose, t, front, pose2=None, blend=0.0, level=0.0):
+    """Arms for a pose, smoothly blended into pose2 (blend 0..1). Each arm is a 4-point limb; points, hand
+    angle and scale are interpolated with an ease curve, the hand shape swaps at the halfway point, and a
+    hand only appears once the forearm is raised into frame. Slow breathing drift + a soft lift with speech."""
+    pose2 = pose2 or pose
+    u = _smoothstep(blend)
+    order = list(POSES.get(pose2 if u > 0.5 else pose, {}).keys())
+    sides = [sx for sx in (-1, 1) if sx not in order] + order  # resting arms first, active arms on top
+    for sx in sides:
+        a, b = _arm_spec(pose, sx), _arm_spec(pose2, sx)
+        pts = _lerp_pts(a[0], b[0], u)
+        # gentle life: slow drift on the hand end, a small lift while speaking (only for raised arms)
+        raised = pts[-1][1] < 0
+        drift = 5 * math.sin(t * 1.3 + sx) if raised else 2 * math.sin(t * 0.8 + sx)
+        lift = -10 * level if raised else 0
+        pts[-1] = (pts[-1][0] + 2 * math.sin(t * 0.9 + sx * 2), pts[-1][1] + drift + lift)
+        pts[-2] = (pts[-2][0], pts[-2][1] + drift * 0.4)
+        kind = b[1] if u > 0.5 else a[1]
+        if kind is None and pts[-1][1] < 60:
+            kind = (b[1] or a[1]) or "relax"
+        s_ = a[2] + (b[2] - a[2]) * u
+        flip = b[3] if u > 0.5 else a[3]
+        dang = a[4] + (b[4] - a[4]) * u
+        fill = b[5] if u > 0.5 else a[5]
+        if kind is None:
+            _sleeve(ctx, pts)
+        else:
+            _arm(ctx, pts, kind, s_, flip, dang, 140 if pose2 == "cross" or pose == "cross" else 138, fill)
 
 
 GESTURES = ["explain", "point", "shrug", "explain", "think", "cross", "explain", "point"]
@@ -1316,19 +1342,25 @@ TALK_EMOS = {"neutral": ["neutral", "smirk", "doubt", "smirk"], "smirk": ["smirk
              "happy": ["happy", "smirk", "happy", "wow"]}
 
 
-def perform(t, level, pose="explain", emo="neutral", seed=0, hold=2.6):
-    """Make the narrator act while talking: change gesture every ~hold seconds, shift expression,
-    tilt and nod the head with speech. Returns a state dict for draw(). Use it for every talking shot."""
-    k = int((t + seed * 1.37) / hold)
+def perform(t, level, pose="explain", emo="neutral", seed=0, hold=3.4, trans=0.7):
+    """Make the narrator act while talking. Gestures change every ~hold seconds and blend smoothly over
+    `trans` seconds (no snapping); expression follows the phrase; head tilts and nods softly with speech.
+    Returns a state dict for draw(). Use it for every talking shot."""
+    tt = t + seed * 1.37
+    k = int(tt / hold)
+    ph = tt - k * hold
     talking = level > 0.08
-    p = pose
-    if talking and pose in ("idle", "explain"):
-        p = GESTURES[(k + seed) % len(GESTURES)]
+    if pose in ("idle", "explain"):
+        p1 = GESTURES[(k + seed) % len(GESTURES)]
+        p2 = GESTURES[(k + 1 + seed) % len(GESTURES)]
+    else:  # a scene asked for a specific pose: hold it, with a short excursion every other cycle
+        p1 = p2 = pose
+    blend = _smoothstep((ph - (hold - trans)) / trans)
     emos = TALK_EMOS.get(emo, TALK_EMOS["neutral"])
     e = emos[(k + seed) % len(emos)] if talking else emo
-    tilt = 0.05 * math.sin(t * 0.9 + seed) + (0.04 * math.sin(t * 3.1) * level)
-    look = 0.35 * math.sin(t * 0.45 + seed)
-    return {"pose": p, "emo": e, "t": t, "level": level, "look": look, "tilt": tilt}
+    tilt = 0.04 * math.sin(t * 0.7 + seed) + 0.02 * math.sin(t * 1.9) * level
+    look = 0.3 * math.sin(t * 0.35 + seed)
+    return {"pose": p1, "pose2": p2, "blend": blend, "emo": e, "t": t, "level": level, "look": look, "tilt": tilt}
 
 
 def draw(ctx, cx, base_y, scale, state):
@@ -1346,7 +1378,7 @@ def draw(ctx, cx, base_y, scale, state):
     _torso(ctx, breathe)
     _neck(ctx)
     # head group with small tilt and nod while talking
-    nod = level * 6 * math.sin(t * 9)
+    nod = level * 4 * math.sin(t * 4.5)
     ctx.save()
     ctx.translate(0, -420)
     ctx.rotate(state.get("tilt", 0.0) + 0.015 * math.sin(t * 0.7))
@@ -1359,7 +1391,7 @@ def draw(ctx, cx, base_y, scale, state):
     _nose_mouth(ctx, emo, level)
     _hair_front(ctx, t, sway)
     ctx.restore()
-    _arms(ctx, pose, t, True)
+    _arms(ctx, pose, t, True, state.get("pose2"), state.get("blend", 0.0), level)
     ctx.restore()
 
 

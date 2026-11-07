@@ -20,7 +20,7 @@ SUFFIX = "" if script.__name__ == "script" else "_" + script.__name__.split("_",
 ROOT = os.path.dirname(os.path.abspath(__file__))
 TTS = os.path.join(ROOT, "cache", "tts")
 OUT = os.path.join(ROOT, "out")
-FPS = 25
+FPS = 30
 SR = 44100
 VOICE = "ru-RU-DmitryNeural"
 RATE = "+16%"
@@ -379,7 +379,7 @@ def render_segment(args):
     sc = G["scale"]
     w, h = int(gfx.W * sc), int(gfx.H * sc)
     p = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgra", "-s", f"{w}x{h}",
-                          "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "19",
+                          "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "slow", "-crf", "16",
                           "-pix_fmt", "yuv420p", path], stdin=subprocess.PIPE)
     for fi in range(a, z):
         p.stdin.write(render_frame(fi))
