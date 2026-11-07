@@ -47,3 +47,7 @@ videos/million/out/*
 !videos/million/out/thumb_A.jpg
 !videos/million/out/thumb_B.jpg
 !videos/million/out/thumb_C.jpg
+
+# reels_fin: caches and renders
+videos/reels_fin/cache/
+videos/reels_fin/out/*
