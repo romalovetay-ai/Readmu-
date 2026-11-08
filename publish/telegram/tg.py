@@ -98,6 +98,8 @@ def cmd_post(a):
 
 
 def cmd_sync(_):
+    path = os.path.join(HERE, "state", "handled.json")  # draft message_ids already published or rejected
+    handled = set(json.load(open(path))) if os.path.exists(path) else set()
     ups = api("getUpdates", {"allowed_updates": ["message", "callback_query"]})
     done = 0
     for u in ups:
@@ -106,13 +108,18 @@ def cmd_sync(_):
         if not q or str(q["from"]["id"]) != str(CFG.get("admin_chat_id")):
             continue
         msg = q["message"]
+        if q["data"] not in ("pub", "redo") or msg["message_id"] in handled:  # double taps, old buttons
+            api("answerCallbackQuery", {"callback_query_id": q["id"], "text": "Уже обработано"}, soft=True)
+            continue
+        handled.add(msg["message_id"])
+        json.dump(sorted(handled), open(path, "w"))
         if q["data"] == "pub":
             api("copyMessage", {"chat_id": CFG["channel"], "from_chat_id": msg["chat"]["id"], "message_id": msg["message_id"]})
             label, done = "✅ Опубликовано", done + 1
         else:
             label = "✏️ На переделку"
         api("editMessageReplyMarkup", {"chat_id": msg["chat"]["id"], "message_id": msg["message_id"],
-                                        "reply_markup": {"inline_keyboard": [[{"text": label, "callback_data": "x"}]]}})
+                                        "reply_markup": {"inline_keyboard": [[{"text": label, "callback_data": "x"}]]}}, soft=True)
         api("answerCallbackQuery", {"callback_query_id": q["id"], "text": label}, soft=True)  # expires after ~15 s
     print(f"Опубликовано одобренных: {done}")
 
