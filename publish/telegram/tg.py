@@ -5,6 +5,7 @@
     python3 tg.py post  --photo out/card.jpg --text out/post.html   # mode from config: draft | auto
     python3 tg.py post  ... --now               # straight to the channel, ignoring draft mode
     python3 tg.py sync                          # publish drafts you approved with the ✅ button
+    python3 tg.py dedupe                        # delete repeated posts in the channel
 
 Draft mode: the bot sends the finished post (photo + caption) to your DM with two buttons.
 ✅ Опубликовать -> on the next `sync` the bot copies exactly that message into the channel.
@@ -124,6 +125,30 @@ def cmd_sync(_):
     print(f"Опубликовано одобренных: {done}")
 
 
+def cmd_dedupe(_):
+    """Delete repeated posts in the channel (same opening text), keeping the first one."""
+    import html as _h
+    import re as _re
+    name = CFG["channel"].lstrip("@")
+    page = urllib.request.urlopen(urllib.request.Request(f"https://t.me/s/{name}", headers={"User-Agent": "Mozilla/5.0"}),
+                                  timeout=30).read().decode("utf8", "replace")
+    first, removed = {}, 0
+    for block in page.split("tgme_widget_message_wrap")[1:]:
+        m = _re.search(r'data-post="[^"/]+/(\d+)"', block)
+        tx = _re.search(r'tgme_widget_message_text[^>]*>(.*?)</div>', block, _re.S)
+        if not m or not tx:
+            continue
+        key = _h.unescape(_re.sub(r"<[^>]+>", "", tx.group(1))).strip()[:120]
+        mid = int(m.group(1))
+        if key in first:
+            if api("deleteMessage", {"chat_id": CFG["channel"], "message_id": mid}, soft=True):
+                removed += 1
+                print(f"Удалён дубль №{mid} (оригинал №{first[key]})")
+        else:
+            first[key] = mid
+    print(f"Дублей удалено: {removed}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -134,8 +159,9 @@ def main():
     p.add_argument("--text", required=True)
     p.add_argument("--now", action="store_true")
     sub.add_parser("sync")
+    sub.add_parser("dedupe")
     a = ap.parse_args()
-    {"check": cmd_check, "chats": cmd_chats, "post": cmd_post, "sync": cmd_sync}[a.cmd](a)
+    {"check": cmd_check, "chats": cmd_chats, "post": cmd_post, "sync": cmd_sync, "dedupe": cmd_dedupe}[a.cmd](a)
 
 
 if __name__ == "__main__":
