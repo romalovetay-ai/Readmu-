@@ -20,5 +20,5 @@
    - Telegram HTML (`<b>`, `<i>`), до 1024 символов → `out/post.html`.
 5. Картинка: `python3 card.py --big "<цифра>" --sub "<подпись>" --pose <поза> --emo <эмоция> --color <цвет> --out out/card.jpg`.
    Чужие картинки не использовать. Посмотреть результат перед отправкой.
-6. `python3 tg.py post --photo out/card.jpg --text out/post.html` (в режиме draft уходит в личку на одобрение).
+6. `python3 tg.py post --photo out/card.jpg --text out/post.html`. Режим `auto`: пост сразу уходит в канал, поэтому перед отправкой ещё раз перечитать текст и цифры; сомневаешься в теме — лучше пропустить запуск. Режим `draft`: уходит в личку на одобрение.
 7. Дописать в `state/log.json` `{date, source, title}`, закоммитить `state/` и запушить.
