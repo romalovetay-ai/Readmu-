@@ -23,7 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(HERE, "config.json")))
 
 
-def api(method, fields=None, files=None):
+def api(method, fields=None, files=None, soft=False):
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         sys.exit("Нет TELEGRAM_BOT_TOKEN в переменных среды.")
@@ -46,7 +46,11 @@ def api(method, fields=None, files=None):
         with urllib.request.urlopen(req, timeout=60) as r:
             return json.load(r)["result"]
     except urllib.error.HTTPError as e:
-        sys.exit(f"Telegram: {e.code} {e.read().decode()}")
+        msg = f"Telegram: {e.code} {e.read().decode()}"
+        if soft:
+            print(msg)
+            return None
+        sys.exit(msg)
 
 
 def send(chat, photo, caption, buttons=None):
@@ -97,6 +101,7 @@ def cmd_sync(_):
     ups = api("getUpdates", {"allowed_updates": ["message", "callback_query"]})
     done = 0
     for u in ups:
+        api("getUpdates", {"offset": u["update_id"] + 1})  # confirm first: never publish the same press twice
         q = u.get("callback_query")
         if not q or str(q["from"]["id"]) != str(CFG.get("admin_chat_id")):
             continue
@@ -108,9 +113,7 @@ def cmd_sync(_):
             label = "✏️ На переделку"
         api("editMessageReplyMarkup", {"chat_id": msg["chat"]["id"], "message_id": msg["message_id"],
                                         "reply_markup": {"inline_keyboard": [[{"text": label, "callback_data": "x"}]]}})
-        api("answerCallbackQuery", {"callback_query_id": q["id"], "text": label})
-    if ups:
-        api("getUpdates", {"offset": ups[-1]["update_id"] + 1})  # confirm, so presses are not handled twice
+        api("answerCallbackQuery", {"callback_query_id": q["id"], "text": label}, soft=True)  # expires after ~15 s
     print(f"Опубликовано одобренных: {done}")
 
 
