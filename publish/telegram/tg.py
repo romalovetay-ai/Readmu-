@@ -68,7 +68,7 @@ def cmd_check(_):
 
 def cmd_chats(_):
     seen = {}
-    for u in api("getUpdates", {"allowed_updates": ["message"]}):
+    for u in api("getUpdates", {"allowed_updates": ["message", "callback_query"]}):
         m = u.get("message")
         if m:
             seen[m["chat"]["id"]] = m["chat"].get("username") or m["chat"].get("first_name")
@@ -94,7 +94,7 @@ def cmd_post(a):
 
 
 def cmd_sync(_):
-    ups = api("getUpdates", {"allowed_updates": ["callback_query"]})
+    ups = api("getUpdates", {"allowed_updates": ["message", "callback_query"]})
     done = 0
     for u in ups:
         q = u.get("callback_query")
