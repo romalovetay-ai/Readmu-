@@ -504,6 +504,60 @@ def sparkle(ctx, x, y, r, alpha=1.0, color=(1, 1, 0.9)):
 _BLOBS = [(0.15, 0.25, 0.30, 0.0), (0.85, 0.20, 0.28, 1.3), (0.70, 0.80, 0.34, 2.1), (0.25, 0.85, 0.26, 3.0), (0.50, 0.50, 0.22, 4.2)]
 
 
+_rnd = random.Random(21)
+_CITY = []
+_x = -200
+while _x < W + 400:
+    _w = _rnd.randint(70, 170)
+    _CITY.append((_x, _w, _rnd.randint(90, 330), _rnd.random(), _rnd.randint(0, 3)))
+    _x += _w + _rnd.randint(-10, 18)
+_rnd2 = random.Random(5)
+_CITY2 = []
+_x = -200
+while _x < W + 400:
+    _w = _rnd2.randint(90, 210)
+    _CITY2.append((_x, _w, _rnd2.randint(60, 200)))
+    _x += _w + _rnd2.randint(0, 30)
+
+
+def skyline(ctx, t, floor_y, top, bot, pan=0.0):
+    """Two layers of a soft distant city on the horizon with a few warm windows, fading into haze."""
+    far = np.clip(bot * 0.9 + top * 0.4 + 0.03, 0, 1)
+    for x, w, h in _CITY2:
+        xx = x - pan * 0.15
+        rrect_path(ctx, xx, floor_y - h, w, h + 4, 6)
+    ctx.set_source_rgba(*far, 0.55)
+    ctx.fill()
+    near = np.clip(bot * 0.62 + 0.02, 0, 1)
+    for x, w, h, r, kind in _CITY:
+        xx = x - pan * 0.3
+        rrect_path(ctx, xx, floor_y - h, w, h + 4, 5)
+        if kind == 0:   # antenna
+            ctx.rectangle(xx + w / 2 - 2, floor_y - h - 36, 4, 36)
+    ctx.set_source_rgba(*near, 0.85)
+    ctx.fill()
+    # lit windows (twinkle slowly)
+    for i, (x, w, h, r, kind) in enumerate(_CITY):
+        xx = x - pan * 0.3
+        cols, rows = max(1, int(w / 26)), max(1, int(h / 30))
+        for cx in range(cols):
+            for ry in range(rows):
+                v = (i * 7 + cx * 13 + ry * 29) % 17
+                if v > 4:
+                    continue
+                on = 0.5 + 0.5 * math.sin(t * 0.3 + v + i)
+                ctx.rectangle(xx + 10 + cx * 26, floor_y - h + 14 + ry * 30, 12, 14)
+                ctx.set_source_rgba(1.0, 0.82, 0.55, 0.20 + 0.25 * on)
+                ctx.fill()
+    # haze over the city
+    g = cairo.LinearGradient(0, floor_y - 360, 0, floor_y)
+    g.add_color_stop_rgba(0, *bot, 0)
+    g.add_color_stop_rgba(1, *np.clip(bot * 1.2, 0, 1), 0.55)
+    ctx.rectangle(0, floor_y - 360, W, 360)
+    ctx.set_source(g)
+    ctx.fill()
+
+
 def background(ctx, t, mood=(0.0, 0.0), floor_y=900, pan=0.0):
     """Calm illustrated set in the channel colours: wine->indigo wall, soft shapes, a floor band with a horizon line."""
     red, grn = mood
@@ -543,6 +597,7 @@ def background(ctx, t, mood=(0.0, 0.0), floor_y=900, pan=0.0):
         ctx.set_source_rgba(1, 0.75, 0.85, 0.07)
         ctx.stroke()
         ctx.restore()
+    skyline(ctx, t, floor_y, top, bot, pan)
     # floor
     fg = cairo.LinearGradient(0, floor_y, 0, H)
     fl = bot * 0.55 + np.array([0.02, 0.0, 0.04])

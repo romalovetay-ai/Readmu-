@@ -1589,4 +1589,4 @@ def render(b, tl, t, level, beats):
         c.set_source(g)
         c.paint()
     flash = f.flash + (0.08 * (1 - tl / 0.15) if (tl < 0.15 and b["idx"] > 0) else 0.0)
-    return cine.post(cine.to_np(surf), t, bloom=0.18, grain=1.0, flash=flash)
+    return cine.post(cine.to_np(surf), t, bloom=0.18, grain=0.0, flash=flash)
