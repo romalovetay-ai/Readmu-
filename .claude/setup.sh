@@ -69,4 +69,14 @@ fi
 # narrator tattoo font
 mkdir -p "$HOME/.local/share/fonts" && cp -n "$ROOT/videos/narrator/fonts/PirataOne-Regular.ttf" "$HOME/.local/share/fonts/" 2>/dev/null && fc-cache -f >/dev/null 2>&1
 
+# Agent Reach: read-only search/reading of YouTube, Reddit, X, GitHub, web etc. (skill: .claude/skills/agent-reach)
+# Installed from GitHub only; the PyPI package with the same name is a different project.
+export PATH="$HOME/.local/bin:$PATH"
+if ! command -v agent-reach >/dev/null && command -v uv >/dev/null; then
+  log "installing Agent Reach"
+  uv tool install --native-tls https://github.com/Panniantong/Agent-Reach/releases/latest/download/agent-reach.zip >/dev/null 2>&1 \
+    && agent-reach setup >/dev/null 2>&1 || log "Agent Reach install failed"
+fi
+[ -n "${CLAUDE_ENV_FILE:-}" ] && echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$CLAUDE_ENV_FILE"
+
 log "ready"
