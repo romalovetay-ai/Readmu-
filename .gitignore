@@ -57,3 +57,4 @@ videos/invest/cache/
 videos/invest/out/*
 videos/invest/voice.log
 videos/invest/render.log
+videos/invest/run_all.log
