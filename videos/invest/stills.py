@@ -1,7 +1,9 @@
 """Quick visual check: one frame per beat (or chosen beats) with fake or real timings -> out/stills/NNN.jpg"""
 import os, sys, json, re
 import cv2
-import script, scenes
+import importlib
+import script
+scenes = importlib.import_module(os.environ.get("SCN", "scenes2d"))
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", "stills")
 os.makedirs(OUT, exist_ok=True)

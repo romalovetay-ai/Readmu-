@@ -12,10 +12,7 @@ import cairo
 
 import gfx
 import character
-try:
-    import scenes
-except ImportError:  # voice-only runs while scenes are being written
-    scenes = None
+import scenes2d as scenes
 import importlib
 script = importlib.import_module(os.environ.get("SCRIPT", "script"))
 SUFFIX = "" if script.__name__ == "script" else "_" + script.__name__.split("_", 1)[1]
