@@ -51,3 +51,9 @@ videos/million/out/*
 # reels_fin: caches and renders
 videos/reels_fin/cache/
 videos/reels_fin/out/*
+
+# invest video: caches and renders
+videos/invest/cache/
+videos/invest/out/*
+videos/invest/voice.log
+videos/invest/render.log
