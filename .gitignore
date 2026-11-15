@@ -60,3 +60,9 @@ videos/invest/render.log
 videos/invest/run_all.log
 !videos/invest/out/thumb.jpg
 videos/invest/voice_v2.log
+
+# budget video: caches and renders
+videos/budget/cache/
+videos/budget/out/*
+!videos/budget/out/thumb.jpg
+videos/budget/*.log
