@@ -505,7 +505,7 @@ def main():
     hop = SR // FPS
     env = build.mouth_env(vt, n_frames_all) if build.FPS == FPS else None
     keys = cam_keys(B)
-    wav = os.path.join(OUT, "demo_mix.wav")
+    wav = os.path.join(OUT, os.environ.get("DEMO_NAME", "demo_upgrade") + "_mix.wav")
     dur = audio(B, vt, wav)
     if "--still" in sys.argv:
         init(B, env, keys)
@@ -521,7 +521,7 @@ def main():
             print("seg", k + 1, len(segs), flush=True)
     lst = os.path.join(OUT, "dsegs.txt")
     open(lst, "w").write("".join(f"file '{p}'\n" for *_, p in segs))
-    out = os.path.join(OUT, "demo_upgrade.mp4")
+    out = os.path.join(OUT, os.environ.get("DEMO_NAME", "demo_upgrade") + ".mp4")
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-i", wav, "-map", "0:v", "-map", "1:a",
                     "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-af", "loudnorm=I=-14:TP=-1.5", "-shortest", "-movflags", "+faststart", out],
                    check=True)

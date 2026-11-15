@@ -88,7 +88,8 @@ _F5 = {}
 
 
 VOICE_V = os.environ.get("VOICE_V", "1")
-STYLE_MODEL = {"calm": "podcaster", "joke": "podcaster", "shout": "podcaster"}   # v2 may switch styles to "emotional"
+STYLE_MODEL = {"calm": "podcaster", "joke": "emotional", "shout": "emotional"}
+_V2_BEATS = os.environ.get("VOICE_V2_BEATS")   # e.g. "14-18": use v2 only for these beats (A/B demos)   # v2 may switch styles to "emotional"
 # v2 studio chain: rumble cut, gentle denoise, less mud, presence + air, de-ess, glue compression, tiny room, loudness
 POST_V2 = ("highpass=f=75,afftdn=nf=-28:tn=1,equalizer=f=250:t=q:w=1.2:g=-2.5,equalizer=f=3200:t=q:w=1.0:g=3,"
            "equalizer=f=9500:t=q:w=1.5:g=2,deesser=i=0.4,acompressor=threshold=-20dB:ratio=3:attack=6:release=90:makeup=2,"
@@ -200,7 +201,18 @@ def _gen_checked(sent, out, speed, tries=3, ok=0.86, model=None, nfe=16):
     return best[0]
 
 
-def tts_f5(text, style="calm"):
+def tts_f5(text, style="calm", v=None):
+    global VOICE_V
+    keep = VOICE_V
+    if v is not None:
+        VOICE_V = v
+    try:
+        return _tts_f5(text, style)
+    finally:
+        VOICE_V = keep
+
+
+def _tts_f5(text, style="calm"):
     shout = style == "shout"
     for a, b in SAY_FIX:
         text = re.sub(a, b, text)
@@ -262,7 +274,11 @@ def build_timeline():
     for i, b in enumerate(script.BEATS):
         b = dict(b)
         if b.get("say"):
-            a, words = tts_f5(spoken(b["say"]), b.get("style", "calm")) if ENGINE == "f5" else tts(spoken(b["say"]), b.get("style") == "shout")
+            vv = None
+            if _V2_BEATS:
+                lo, hi = (int(x) for x in _V2_BEATS.split("-"))
+                vv = "2" if lo <= i <= hi else "1"
+            a, words = tts_f5(spoken(b["say"]), b.get("style", "calm"), vv) if ENGINE == "f5" else tts(spoken(b["say"]), b.get("style") == "shout")
             dur = len(a) / SR + b.get("pad", GAP)
         else:
             a, words = np.zeros(0, np.float32), []
