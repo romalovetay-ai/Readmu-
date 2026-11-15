@@ -810,12 +810,26 @@ EMO = {
 }
 
 
-def _eyes(ctx, emo, t, look, blink_override):
+def _blink_at(t):
+    """Irregular blinks (2.2-5.5 s apart, sometimes double), 0..1."""
+    k = int(t / 3.7)
+    best = 0.0
+    for kk in (k - 1, k, k + 1):
+        h = (kk * 2654435761) % 1000 / 1000.0
+        t0 = kk * 3.7 + h * 2.4
+        for dt in ((0.0, 0.32) if h > 0.78 else (0.0,)):
+            ph = t - t0 - dt
+            if 0 <= ph < 0.18:
+                best = max(best, 1 - abs(ph - 0.07) / 0.11 if ph > 0.07 else ph / 0.07)
+    return max(0.0, min(1.0, best))
+
+
+def _eyes(ctx, emo, t, look, blink_override, brow=0.0):
     lid, braise, btilt, _, pup = EMO.get(emo, EMO["neutral"])
+    braise = braise + brow
     blink = blink_override
     if blink is None:
-        ph = t % 4.1
-        blink = max(0.0, 1 - abs(ph - 0.08) / 0.08) if ph < 0.16 else 0.0
+        blink = _blink_at(t)
     for sx in (-1, 1):
         ex, ey = sx * 92, -610
         rx, ry = 62, 56 if emo != "wow" else 64
@@ -919,7 +933,73 @@ def _eyes(ctx, emo, t, look, blink_override):
         ctx.stroke()
 
 
-def _nose_mouth(ctx, emo, level):
+VISEME = {  # mouth shape per sound: (width factor, height factor, roundness 0..1, show teeth)
+    "A": (1.00, 1.00, 0.0, True), "O": (0.60, 0.78, 1.0, False), "U": (0.42, 0.55, 1.0, False),
+    "E": (1.12, 0.48, 0.0, True), "I": (1.05, 0.32, 0.0, True), "M": (0.95, 0.0, 0.0, False),
+    "F": (0.95, 0.16, 0.0, True), "C": (0.85, 0.42, 0.2, True),
+}
+
+
+def _viseme_mouth(ctx, vis, amt, level, emo):
+    """Talking mouth shaped by the current sound (vis) blended with its opening amount."""
+    mx, my = 4, -458
+    wf, hf, rnd, teeth = VISEME.get(vis, VISEME["C"])
+    open_ = max(0.0, min(1.0, amt))
+    w = 48 * wf + 6 * open_
+    h = (6 + 50 * hf * open_) * (0.6 + 0.4 * min(1.0, level * 1.6))
+    smile = 6 if emo in ("happy", "smirk") else (-4 if emo in ("sad", "angry") else 0)
+    if h < 7:  # closed lips (M/B/P) with a little press
+        ctx.move_to(mx - w, my - smile * 0.5)
+        ctx.curve_to(mx - w * 0.4, my + 6, mx + w * 0.4, my + 6, mx + w, my - smile * 0.5)
+        _c(ctx, OUT)
+        ctx.set_line_width(7)
+        ctx.stroke()
+        ctx.move_to(mx - 16, my + 18)
+        ctx.curve_to(mx - 5, my + 24, mx + 7, my + 24, mx + 18, my + 18)
+        _c(ctx, SKIN_SH)
+        ctx.set_line_width(4)
+        ctx.stroke()
+        return
+
+    def lips(c):
+        if rnd > 0.5:
+            _ellipse(c, mx, my + h * 0.45, w, h * 0.55 + 4)
+        else:
+            c.move_to(mx - w, my - smile)
+            c.curve_to(mx - w * 0.6, my - 7 - smile * 0.3, mx + w * 0.6, my - 7 - smile * 0.3, mx + w, my - smile)
+            c.curve_to(mx + w * 0.72, my + h, mx - w * 0.72, my + h, mx - w, my - smile)
+            c.close_path()
+    lips(ctx)
+    _c(ctx, (0.33, 0.09, 0.11))
+    ctx.fill()
+    ctx.save()
+    lips(ctx)
+    ctx.clip()
+    if h > 16:
+        _ellipse(ctx, mx, my + h * 0.98, w * 0.55, h * 0.42)  # tongue
+        _c(ctx, (0.86, 0.42, 0.44))
+        ctx.fill()
+    if teeth:
+        ctx.rectangle(mx - w, my - 12, 2 * w, 12 + min(10, h * 0.22))
+        _c(ctx, (1, 1, 1))
+        ctx.fill()
+        if vis == "F":
+            ctx.rectangle(mx - w, my + h - 8, 2 * w, 10)
+            ctx.fill()
+    ctx.restore()
+    lips(ctx)
+    _c(ctx, OUT)
+    ctx.set_line_width(6)
+    ctx.stroke()
+    # lower lip highlight
+    ctx.move_to(mx - w * 0.35, my + h + 12)
+    ctx.curve_to(mx - w * 0.1, my + h + 18, mx + w * 0.1, my + h + 18, mx + w * 0.35, my + h + 12)
+    _c(ctx, SKIN_SH)
+    ctx.set_line_width(4)
+    ctx.stroke()
+
+
+def _nose_mouth(ctx, emo, level, vis=None, vamt=0.0):
     # nose
     ctx.move_to(-6, -575)
     ctx.curve_to(-16, -540, -22, -515, -4, -505)
@@ -932,6 +1012,9 @@ def _nose_mouth(ctx, emo, level):
     ctx.fill()
     mouth = EMO.get(emo, EMO["neutral"])[3]
     mx, my = 4, -458
+    if vis is not None and (level > 0.05 or vamt > 0.05):
+        _viseme_mouth(ctx, vis, vamt, level, emo)
+        return
     if level > 0.08:
         h = 10 + 46 * min(1.0, level)
         w = 46 + 10 * min(1.0, level)
@@ -1305,7 +1388,7 @@ def _lerp_pts(a, b, u):
     return [(ax + (bx - ax) * u, ay + (by - ay) * u) for (ax, ay), (bx, by) in zip(a, b)]
 
 
-def _arms(ctx, pose, t, front, pose2=None, blend=0.0, level=0.0):
+def _arms(ctx, pose, t, front, pose2=None, blend=0.0, level=0.0, beat=0.0, overlap=False):
     """Arms for a pose, smoothly blended into pose2 (blend 0..1). Each arm is a 4-point limb; points, hand
     angle and scale are interpolated with an ease curve, the hand shape swaps at the halfway point, and a
     hand only appears once the forearm is raised into frame. Slow breathing drift + a soft lift with speech."""
@@ -1315,11 +1398,18 @@ def _arms(ctx, pose, t, front, pose2=None, blend=0.0, level=0.0):
     sides = [sx for sx in (-1, 1) if sx not in order] + order  # resting arms first, active arms on top
     for sx in sides:
         a, b = _arm_spec(pose, sx), _arm_spec(pose2, sx)
-        pts = _lerp_pts(a[0], b[0], u)
+        if overlap:
+            pts = []
+            for i, ((ax, ay), (bx, by)) in enumerate(zip(a[0], b[0])):
+                ui = _smoothstep((blend - i * 0.10) / 0.70)
+                ui = ui + 0.10 * math.sin(math.pi * ui) * (i / 3)   # follow-through overshoot at the hand
+                pts.append((ax + (bx - ax) * ui, ay + (by - ay) * ui))
+        else:
+            pts = _lerp_pts(a[0], b[0], u)
         # gentle life: slow drift on the hand end, a small lift while speaking (only for raised arms)
         raised = pts[-1][1] < 0
         drift = 5 * math.sin(t * 1.3 + sx) if raised else 2 * math.sin(t * 0.8 + sx)
-        lift = -10 * level if raised else 0
+        lift = (-10 * level - 26 * beat) if raised else 0
         pts[-1] = (pts[-1][0] + 2 * math.sin(t * 0.9 + sx * 2), pts[-1][1] + drift + lift)
         pts[-2] = (pts[-2][0], pts[-2][1] + drift * 0.4)
         kind = b[1] if u > 0.5 else a[1]
@@ -1363,6 +1453,55 @@ def perform(t, level, pose="explain", emo="neutral", seed=0, hold=3.4, trans=0.7
     return {"pose": p1, "pose2": p2, "blend": blend, "emo": e, "t": t, "level": level, "look": look, "tilt": tilt}
 
 
+VOW = {"а": "A", "я": "A", "о": "O", "ё": "O", "у": "U", "ю": "U", "э": "E", "е": "E", "и": "I", "ы": "I"}
+CONS = {"м": "M", "б": "M", "п": "M", "ф": "F", "в": "F"}
+
+
+def _sound_at(word, u):
+    """Which sound of a word is heard at fraction u of its duration: (viseme, opening)."""
+    letters = [ch for ch in word.lower() if ch.isalpha()]
+    if not letters:
+        return "C", 0.3
+    n = len(letters)
+    i = min(n - 1, int(u * n))
+    ch = letters[i]
+    local = u * n - i
+    if ch in VOW:
+        return VOW[ch], 0.55 + 0.45 * math.sin(math.pi * local)
+    if ch in CONS:
+        return CONS[ch], 0.15
+    # other consonant: half-open, take the shape of the nearest vowel after it
+    for j in range(i + 1, min(n, i + 3)):
+        if letters[j] in VOW:
+            return VOW[letters[j]], 0.35
+    return "C", 0.35
+
+
+def perform_v2(t, level, words, lt, pose="explain", emo="neutral", seed=0, hold=3.4, trans=0.8):
+    """perform() + lip-sync from word timings [(t0, t1, word)] (beat-relative t), brow accents and nods on
+    word onsets, beat gestures on long words, overlapping arm motion. lt = seconds into the beat."""
+    st = perform(t, level, pose, emo, seed, hold, trans)
+    vis, vamt, onset_age, cur_len = None, 0.0, 9.0, 0.0
+    for w0, w1, w in words:
+        if w0 - 0.04 <= lt <= w1 + 0.02:
+            u = (lt - w0) / max(0.05, w1 - w0)
+            vis, vamt = _sound_at(w, max(0.0, min(0.999, u)))
+            onset_age = lt - w0
+            cur_len = len(w)
+            break
+        if w0 <= lt:
+            onset_age = lt - w0
+    if vis is None and level > 0.12:
+        vis, vamt = "C", min(1.0, level)
+    # nod and brow on each word onset (decaying), stronger on long words
+    k = math.exp(-onset_age * 7.0) if onset_age < 1.0 else 0.0
+    big = min(1.0, cur_len / 8.0)
+    st.update(vis=vis, vamt=vamt, nod=7 * k * (0.6 + big) * min(1.0, level * 2 + 0.3),
+              brow=0.35 * k * big, beat=k * big * min(1.0, level * 1.5), overlap=True,
+              turn=10 * math.sin(t * 0.43 + seed))
+    return st
+
+
 def draw(ctx, cx, base_y, scale, state):
     t = state.get("t", 0.0)
     pose = state.get("pose", "idle")
@@ -1378,20 +1517,21 @@ def draw(ctx, cx, base_y, scale, state):
     _torso(ctx, breathe)
     _neck(ctx)
     # head group with small tilt and nod while talking
-    nod = level * 4 * math.sin(t * 4.5)
+    nod = state.get("nod", level * 4 * math.sin(t * 4.5))
     ctx.save()
     ctx.translate(0, -420)
     ctx.rotate(state.get("tilt", 0.0) + 0.015 * math.sin(t * 0.7))
-    ctx.translate(0, 420 + nod)
+    ctx.translate(state.get("turn", 0.0), 420 + nod)
     _hair_back(ctx, t, sway)
     _ears(ctx)
     _face_shape(ctx)
     _earrings(ctx, t)
-    _eyes(ctx, emo, t, look, state.get("blink"))
-    _nose_mouth(ctx, emo, level)
+    _eyes(ctx, emo, t, look, state.get("blink"), state.get("brow", 0.0))
+    _nose_mouth(ctx, emo, level, state.get("vis"), state.get("vamt", 0.0))
     _hair_front(ctx, t, sway)
     ctx.restore()
-    _arms(ctx, pose, t, True, state.get("pose2"), state.get("blend", 0.0), level)
+    _arms(ctx, pose, t, True, state.get("pose2"), state.get("blend", 0.0), level, state.get("beat", 0.0),
+          state.get("overlap", False))
     ctx.restore()
 
 
