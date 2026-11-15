@@ -87,12 +87,39 @@ SAY_FIX = [  # how abbreviations and foreign names should be pronounced
 _F5 = {}
 
 
-def f5_voice():
-    if "v" not in _F5:
+VOICE_V = os.environ.get("VOICE_V", "1")
+STYLE_MODEL = {"calm": "podcaster", "joke": "podcaster", "shout": "podcaster"}   # v2 may switch styles to "emotional"
+# v2 studio chain: rumble cut, gentle denoise, less mud, presence + air, de-ess, glue compression, tiny room, loudness
+POST_V2 = ("highpass=f=75,afftdn=nf=-28:tn=1,equalizer=f=250:t=q:w=1.2:g=-2.5,equalizer=f=3200:t=q:w=1.0:g=3,"
+           "equalizer=f=9500:t=q:w=1.5:g=2,deesser=i=0.4,acompressor=threshold=-20dB:ratio=3:attack=6:release=90:makeup=2,"
+           "aecho=0.8:0.6:24|37:0.05|0.03,loudnorm=I=-16:TP=-1.5")
+POST_V2_SHOUT = ("highpass=f=90,afftdn=nf=-28:tn=1,rubberband=pitch=1.03,equalizer=f=250:t=q:w=1.2:g=-3,"
+                 "equalizer=f=2800:t=q:w=1.0:g=4,deesser=i=0.5,acompressor=threshold=-22dB:ratio=5:attack=4:release=70:makeup=3,"
+                 "aexciter=amount=1.5,aecho=0.8:0.6:24|37:0.05|0.03,loudnorm=I=-15:TP=-1.5")
+
+
+def f5_voice(model=None):
+    model = model or MODEL
+    if model not in _F5:
         sys.path.insert(0, VOICE_DIR)
         import f5
-        _F5["v"] = f5.Voice(REF, open(REF + ".txt").read(), model=MODEL)
-    return _F5["v"]
+        _F5[model] = f5.Voice(REF, open(REF + ".txt").read(), model=model)
+    return _F5[model]
+
+
+def _chunks(text, maxlen=170):
+    """Whole phrases for natural intonation: group sentences into chunks of up to maxlen characters."""
+    sents = [x for x in re.split(r"(?<=[.!?…])\s+", text) if x.strip()]
+    out, cur = [], ""
+    for snt in sents:
+        if cur and len(cur) + 1 + len(snt) > maxlen:
+            out.append(cur)
+            cur = snt
+        else:
+            cur = (cur + " " + snt).strip()
+    if cur:
+        out.append(cur)
+    return out
 
 
 def _whisper():
@@ -155,12 +182,12 @@ def _match(text, wav_path):
     return difflib.SequenceMatcher(a=_words_for_check(text), b=_words_for_check(hyp)).ratio()
 
 
-def _gen_checked(sent, out, speed, tries=3, ok=0.86):
+def _gen_checked(sent, out, speed, tries=3, ok=0.86, model=None, nfe=16):
     """Generate one sentence, re-roll up to `tries` times until Whisper agrees with the text; keep the best."""
     best = (-1.0, None)
     for k in range(tries):
         tmp = f"{out}.try{k}.wav"
-        f5_voice().say(sent.lower(), tmp, speed=speed, nfe=16)
+        f5_voice(model).say(sent.lower(), tmp, speed=speed, nfe=nfe)
         r = _match(sent, tmp)
         if r > best[0]:
             best = (r, tmp)
@@ -177,22 +204,30 @@ def tts_f5(text, style="calm"):
     shout = style == "shout"
     for a, b in SAY_FIX:
         text = re.sub(a, b, text)
-    h = hashlib.md5(("f5" + MODEL + REF + text + "!" + style).encode()).hexdigest()[:16]
+    tag = "" if VOICE_V == "1" else f"!v{VOICE_V}:{STYLE_MODEL.get(style)}"
+    h = hashlib.md5(("f5" + MODEL + REF + text + "!" + style + tag).encode()).hexdigest()[:16]
     raw, js, wav = (os.path.join(TTS, h + e) for e in ("_24k.wav", ".json", ".wav"))
     if not os.path.exists(wav):
         import soundfile as sf
-        sents = [x for x in re.split(r"(?<=[.!?…])\s+", text) if x.strip()]
+        v2 = VOICE_V != "1"
+        sents = _chunks(text) if v2 else [x for x in re.split(r"(?<=[.!?…])\s+", text) if x.strip()]
         parts, scores = [], []
         for j, snt in enumerate(sents):
             pth = f"{raw}.s{j}.wav"
-            scores.append(_gen_checked(snt, pth, {"shout": 1.08, "joke": 1.04}.get(style, 0.98)))
+            sp = {"shout": 1.08, "joke": 1.04}.get(style, 0.98)
+            if v2:
+                scores.append(_gen_checked(snt, pth, sp, tries=4, ok=0.9, model=STYLE_MODEL.get(style), nfe=32))
+            else:
+                scores.append(_gen_checked(snt, pth, sp))
             y, sr = sf.read(pth, dtype="float32")
-            parts += [y, np.zeros(int(0.13 * sr), np.float32)]
+            parts += [y, np.zeros(int((0.28 if v2 else 0.13) * sr), np.float32)]
             os.remove(pth)
         sf.write(raw, np.concatenate(parts[:-1]), sr)
         print(f"  f5 beat ok={min(scores):.2f} :: {text[:60]}", file=sys.stderr, flush=True)
         af = "loudnorm=I=-16:TP=-1.5"
-        if shout:  # a bit higher, louder, slightly overdriven
+        if VOICE_V != "1":
+            af = POST_V2_SHOUT if shout else POST_V2
+        elif shout:  # a bit higher, louder, slightly overdriven
             af = "rubberband=pitch=1.06,volume=4dB,acompressor=threshold=-18dB:ratio=6:attack=5:release=60,aexciter=amount=2," + af
         r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", raw, "-af", af, "-ac", "1", "-ar", str(SR), wav])
         if r.returncode != 0:

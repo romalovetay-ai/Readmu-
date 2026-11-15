@@ -4,7 +4,7 @@
   As a module: Voice(ref_wav, ref_text).say(text, out_wav, speed)
 The output copies timbre and manner of the reference clip, so the reference decides how 'alive' it sounds.
 """
-import argparse, os, sys
+import argparse, os, re, sys
 import numpy as np
 import soundfile as sf
 import torch
@@ -39,6 +39,11 @@ MODELS = {
     "emotional": ("Andreevai/f5-tts-russian-emotional", "model.safetensors", "vocab.txt"),           # MIT, theatrical
 }
 REPO, CKPT, VOCAB = MODELS["podcaster"]
+# fixes for words the stress model gets wrong (applied to its output; "+" goes before the stressed vowel)
+STRESS_FIX = [
+    (r"\bн\+е\b", "не"), (r"\bн\+и\b", "ни"), (r"(?i)мосбирж\+и", "М+осбиржи"), (r"\bн\+ахуй", "нах+уй"),
+    (r"\bдог\+овор", "догов+ор"), (r"\bсредств\+а\b", "ср+едства"), (r"\bд\+ешевле", "дешевл+е"),
+]
 CFG = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
 
 
@@ -64,7 +69,12 @@ class Voice:
         self.ref_audio, self.ref_text = preprocess_ref_audio_text(ref_wav, self.stress(ref_text))
 
     def stress(self, text):
-        return self.acc.process_all(text) if self.acc else text
+        if not self.acc:
+            return text
+        out = self.acc.process_all(text)
+        for a, b in STRESS_FIX:
+            out = re.sub(a, b, out)
+        return out
 
     def say(self, text, out, speed=1.0, nfe=32):
         from f5_tts.infer.utils_infer import infer_process
