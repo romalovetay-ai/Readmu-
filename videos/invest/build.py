@@ -87,7 +87,7 @@ SAY_FIX = [  # how abbreviations and foreign names should be pronounced
 _F5 = {}
 
 
-VOICE_V = os.environ.get("VOICE_V", "1")
+VOICE_V = os.environ.get("VOICE_V", "2")   # approved standard: v2 (set VOICE_V=1 only to reuse old v1 caches)
 STYLE_MODEL = {"calm": "podcaster", "joke": "emotional", "shout": "emotional"}
 _V2_BEATS = os.environ.get("VOICE_V2_BEATS")   # e.g. "14-18": use v2 only for these beats (A/B demos)   # v2 may switch styles to "emotional"
 # v2 studio chain: rumble cut, gentle denoise, less mud, presence + air, de-ess, glue compression, tiny room, loudness
