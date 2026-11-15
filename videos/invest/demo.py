@@ -335,6 +335,8 @@ G = {}
 
 def init(B, env, keys):
     G["B"], G["env"], G["keys"] = B, env, keys
+    k = int(FPS * 0.35)
+    G["body"] = np.convolve(env, np.ones(k) / k, "same") if env is not None else []
 
 
 def frame(fi):
@@ -356,9 +358,12 @@ def frame(fi):
     c = cairo.Context(surf)
     story(c, B, i, tl, T, keys, level)
     # narrator (upgraded acting) on the right
+    if b.get("style") == "shout":
+        art.shout_fx(c, tl, T, level, 1610, H + 6 - 680 * 0.56, b["words"], layer="back")
     cs = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
     cc = cairo.Context(cs)
-    st = character.perform_v2(T, level, b["words"], tl, b.get("pose", "explain"), b.get("emo", "neutral"), seed=b["idx"])
+    st = character.perform_v2(T, level, b["words"], tl, b.get("pose", "explain"), b.get("emo", "neutral"), seed=b["idx"],
+                              body_level=float(G["body"][afi]) if afi < len(G["body"]) else level)
     if b.get("style") == "shout":
         st["emo"] = "angry" if int(T * 1.5) % 3 else "wow"
     st["look"] = -0.7
@@ -370,12 +375,7 @@ def frame(fi):
     c.paint()
     kinetic(c, b, tl)
     if b.get("style") == "shout":
-        kk = clamp(tl / 0.4) * (0.5 + 0.25 * level)
-        g = cairo.RadialGradient(W / 2, H / 2, H * 0.34, W / 2, H / 2, W * 0.62)
-        g.add_color_stop_rgba(0, 1.0, 0.2, 0.22, 0)
-        g.add_color_stop_rgba(1, 1.0, 0.2, 0.22, 0.6 * kk)
-        c.set_source(g)
-        c.paint()
+        art.shout_fx(c, tl, T, level, 1610, H + 6 - 680 * 0.56, b["words"], layer="front")
     # opening of the story: fade up from black
     if i == FIRST + 1 and tl < 0.3:
         c.set_source_rgba(0, 0, 0, 1 - tl / 0.3)

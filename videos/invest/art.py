@@ -632,3 +632,63 @@ def background(ctx, t, mood=(0.0, 0.0), floor_y=900, pan=0.0):
     tl.add_color_stop_rgba(1, 1, 0.85, 0.8, 0)
     ctx.set_source(tl)
     ctx.paint()
+
+
+# ------------------------------------------------------------------ shouting
+def _accent_env(a):
+    if a <= 0:
+        return 0.0
+    return (a / 0.08) if a < 0.08 else math.exp(-(a - 0.08) * 4.0)
+
+
+def shout_fx(ctx, tl, t, level, cx, cy, words=(), k_in=None, layer="both"):
+    """Comic-style shout: crimson-dark vignette, emphasis (speed) lines converging on the speaker's head,
+    and soft shock rings on loud word onsets. No shaking, no full-screen red wash."""
+    k = clamp(tl / 0.35) if k_in is None else k_in
+    if k <= 0:
+        return
+    acc = 0.0
+    rings = []
+    for w0, w1, w in words:
+        a = tl - w0
+        if a < 0:
+            break
+        e = _accent_env(a) * min(1.0, len(w) / 6.0)
+        acc = max(acc, e)
+        if a < 0.7 and len(w) >= 5:
+            rings.append(a)
+    pulse = 0.55 + 0.45 * max(acc, min(1.0, level))
+    # 1) vignette: deep crimson at the edges, keeps the centre clean (drawn over everything)
+    if layer in ("both", "front"):
+        g = cairo.RadialGradient(cx, cy, H * 0.30, W / 2, H / 2, W * 0.66)
+        g.add_color_stop_rgba(0, 0.25, 0.0, 0.04, 0)
+        g.add_color_stop_rgba(0.55, 0.30, 0.0, 0.05, 0.22 * k)
+        g.add_color_stop_rgba(1, 0.20, 0.0, 0.03, 0.62 * k)
+        ctx.set_source(g)
+        ctx.paint()
+        if layer == "front":
+            return
+    # 2) emphasis lines (manga focus lines), slowly rotating, length breathing with the voice
+    rnd = random.Random(int(t * 12) // 3)      # re-jitter ~4 times per second (hand-drawn boil)
+    n = 64
+    rot = t * 0.15
+    R1 = math.hypot(W, H)
+    for i in range(n):
+        a = rot + i * 2 * math.pi / n + rnd.uniform(-0.02, 0.02)
+        r0 = (330 + 140 * rnd.random()) * (1.25 - 0.35 * pulse)
+        wdt = 0.006 + 0.010 * rnd.random()
+        ctx.move_to(cx + r0 * math.cos(a), cy + r0 * math.sin(a))
+        ctx.line_to(cx + R1 * math.cos(a - wdt), cy + R1 * math.sin(a - wdt))
+        ctx.line_to(cx + R1 * math.cos(a + wdt), cy + R1 * math.sin(a + wdt))
+        ctx.close_path()
+    ctx.set_source_rgba(1.0, 0.92, 0.88, 0.16 * k * pulse)
+    ctx.fill()
+    # 3) shock rings from the speaker on strong words
+    for a in rings:
+        u = a / 0.7
+        r = 120 + 520 * ease(u)
+        ctx.new_sub_path()
+        ctx.arc(cx, cy, r, 0, 2 * math.pi)
+        ctx.set_line_width(10 * (1 - u) + 2)
+        ctx.set_source_rgba(1.0, 0.55, 0.45, 0.35 * (1 - u) * k)
+        ctx.stroke()

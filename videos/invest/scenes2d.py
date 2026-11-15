@@ -1542,7 +1542,7 @@ def render(b, tl, t, level, beats):
     SCENES[b["scene"]](f)
     shout = b.get("style") == "shout"
     if shout:
-        f.mood = (max(f.mood[0], 0.5 * clamp(tl / 0.4)), f.mood[1])
+        f.mood = (max(f.mood[0], 0.30 * clamp(tl / 0.4)), f.mood[1])
         f.zoom += 0.035 * ease(tl / 0.5) + 0.01 * level
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
     c = cairo.Context(surf)
@@ -1563,11 +1563,18 @@ def render(b, tl, t, level, beats):
     c.translate(-fx_, -fy_)
     for fn in f.main:
         fn(c)
+    if shout:
+        ch0 = f.char or {"x": 960, "base": H + 40, "sc": 0.7}
+        art.shout_fx(c, tl, t, level, ch0["x"], ch0["base"] - 680 * ch0["sc"], b.get("words", []), layer="back")
     if f.char:
         ch = f.char
         cs = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
         cc = cairo.Context(cs)
-        stt = character.perform(t, level, b.get("pose", "explain"), b.get("emo", "neutral"), seed=b["idx"])
+        if b.get("words"):
+            stt = character.perform_v2(t, level, b["words"], tl, b.get("pose", "explain"), b.get("emo", "neutral"), seed=b["idx"],
+                                       body_level=b.get("_body", level))
+        else:
+            stt = character.perform(t, level, b.get("pose", "explain"), b.get("emo", "neutral"), seed=b["idx"])
         if shout:
             stt["emo"] = "angry" if int(t * 1.5) % 3 else "wow"
         stt["look"] = {"center": stt["look"] * 0.5, "right": -0.7, "left": 0.7}.get(ch["where"], 0.0)
@@ -1582,11 +1589,9 @@ def render(b, tl, t, level, beats):
     for fn in f.ui:
         fn(c)
     if shout:
-        k = clamp(tl / 0.4) * (0.55 + 0.25 * level + 0.1 * math.sin(t * 3))
-        g = cairo.RadialGradient(W / 2, H / 2, H * 0.34, W / 2, H / 2, W * 0.62)
-        g.add_color_stop_rgba(0, 1.0, 0.2, 0.22, 0)
-        g.add_color_stop_rgba(1, 1.0, 0.2, 0.22, 0.65 * k)
-        c.set_source(g)
-        c.paint()
+        ch = f.char or {"x": 960, "base": H + 40, "sc": 0.7}
+        hx = ch["x"]
+        hy = ch["base"] - 680 * ch["sc"]
+        art.shout_fx(c, tl, t, level, hx, hy, b.get("words", []), layer="front")
     flash = f.flash + (0.08 * (1 - tl / 0.15) if (tl < 0.15 and b["idx"] > 0) else 0.0)
     return cine.post(cine.to_np(surf), t, bloom=0.18, grain=0.0, flash=flash)

@@ -941,9 +941,14 @@ VISEME = {  # mouth shape per sound: (width factor, height factor, roundness 0..
 
 
 def _viseme_mouth(ctx, vis, amt, level, emo):
-    """Talking mouth shaped by the current sound (vis) blended with its opening amount."""
+    """Talking mouth shaped by the current sound (vis) blended with its opening amount.
+    vis may be a tuple (wf, hf, roundness, teeth 0..1) of already-smoothed shape parameters."""
     mx, my = 4, -458
-    wf, hf, rnd, teeth = VISEME.get(vis, VISEME["C"])
+    if isinstance(vis, tuple):
+        wf, hf, rnd, tv = vis
+        teeth = tv > 0.5
+    else:
+        wf, hf, rnd, teeth = VISEME.get(vis, VISEME["C"])
     open_ = max(0.0, min(1.0, amt))
     w = 48 * wf + 6 * open_
     h = (6 + 50 * hf * open_) * (0.6 + 0.4 * min(1.0, level * 1.6))
@@ -983,7 +988,7 @@ def _viseme_mouth(ctx, vis, amt, level, emo):
         ctx.rectangle(mx - w, my - 12, 2 * w, 12 + min(10, h * 0.22))
         _c(ctx, (1, 1, 1))
         ctx.fill()
-        if vis == "F":
+        if vis == "F" or (isinstance(vis, tuple) and hf < 0.2 and wf > 0.9 and amt > 0.1):
             ctx.rectangle(mx - w, my + h - 8, 2 * w, 10)
             ctx.fill()
     ctx.restore()
@@ -1401,8 +1406,8 @@ def _arms(ctx, pose, t, front, pose2=None, blend=0.0, level=0.0, beat=0.0, overl
         if overlap:
             pts = []
             for i, ((ax, ay), (bx, by)) in enumerate(zip(a[0], b[0])):
-                ui = _smoothstep((blend - i * 0.10) / 0.70)
-                ui = ui + 0.10 * math.sin(math.pi * ui) * (i / 3)   # follow-through overshoot at the hand
+                ui = _smoothstep((blend - i * 0.06) / 0.82)
+                ui = ui + 0.05 * math.sin(math.pi * ui) * (i / 3)   # gentle follow-through at the hand
                 pts.append((ax + (bx - ax) * ui, ay + (by - ay) * ui))
         else:
             pts = _lerp_pts(a[0], b[0], u)
@@ -1477,28 +1482,55 @@ def _sound_at(word, u):
     return "C", 0.35
 
 
-def perform_v2(t, level, words, lt, pose="explain", emo="neutral", seed=0, hold=3.4, trans=0.8):
-    """perform() + lip-sync from word timings [(t0, t1, word)] (beat-relative t), brow accents and nods on
-    word onsets, beat gestures on long words, overlapping arm motion. lt = seconds into the beat."""
+def _accent(a):
+    """Smooth accent envelope for a word that started a seconds ago: eased rise, slow decay (no snapping)."""
+    if a <= 0:
+        return 0.0
+    if a < 0.14:
+        return _smoothstep(a / 0.14)
+    return math.exp(-(a - 0.14) * 3.0)
+
+
+def _mouth_params(words, lt):
+    """Viseme shape parameters averaged over a short window so the mouth glides between sounds."""
+    acc = [0.0, 0.0, 0.0, 0.0]
+    amt = 0.0
+    wsum = 0.0
+    for dt, wgt in ((-0.05, 0.2), (-0.02, 0.3), (0.0, 0.3), (0.03, 0.2)):
+        tt = lt + dt
+        vis, va = None, 0.0
+        for w0, w1, w in words:
+            if w0 - 0.03 <= tt <= w1 + 0.02:
+                vis, va = _sound_at(w, max(0.0, min(0.999, (tt - w0) / max(0.05, w1 - w0))))
+                break
+        if vis is None:
+            vis, va = "M", 0.0
+        p = VISEME[vis]
+        for k in range(4):
+            acc[k] += wgt * (float(p[k]) if k < 3 else (1.0 if p[3] else 0.0))
+        amt += wgt * va
+        wsum += wgt
+    return tuple(x / wsum for x in acc), amt / wsum
+
+
+def perform_v2(t, level, words, lt, pose="explain", emo="neutral", seed=0, hold=3.6, trans=1.0, body_level=None):
+    """perform() + lip-sync from word timings [(t0, t1, word)] (lt = seconds into the beat), smooth accents on
+    words (nod, brows, a hand beat on long words) and overlapping arm motion. body_level: a slowly smoothed
+    voice level for the body, so arms never twitch with every syllable."""
     st = perform(t, level, pose, emo, seed, hold, trans)
-    vis, vamt, onset_age, cur_len = None, 0.0, 9.0, 0.0
+    shape_, vamt = _mouth_params(words, lt)
+    energy, long_e = 0.0, 0.0
     for w0, w1, w in words:
-        if w0 - 0.04 <= lt <= w1 + 0.02:
-            u = (lt - w0) / max(0.05, w1 - w0)
-            vis, vamt = _sound_at(w, max(0.0, min(0.999, u)))
-            onset_age = lt - w0
-            cur_len = len(w)
+        if w0 > lt:
             break
-        if w0 <= lt:
-            onset_age = lt - w0
-    if vis is None and level > 0.12:
-        vis, vamt = "C", min(1.0, level)
-    # nod and brow on each word onset (decaying), stronger on long words
-    k = math.exp(-onset_age * 7.0) if onset_age < 1.0 else 0.0
-    big = min(1.0, cur_len / 8.0)
-    st.update(vis=vis, vamt=vamt, nod=7 * k * (0.6 + big) * min(1.0, level * 2 + 0.3),
-              brow=0.35 * k * big, beat=k * big * min(1.0, level * 1.5), overlap=True,
-              turn=10 * math.sin(t * 0.43 + seed))
+        e = _accent(lt - w0)
+        weight = min(1.0, len(w) / 7.0)
+        energy = max(energy, e * (0.5 + 0.5 * weight))
+        long_e = max(long_e, e * max(0.0, weight - 0.4) / 0.6)
+    bl = level if body_level is None else body_level
+    st.update(vis=shape_ if (vamt > 0.03 or level > 0.08) else None, vamt=max(vamt, 0.0),
+              nod=5.0 * energy, brow=0.28 * long_e, beat=0.7 * long_e, overlap=True, body_level=bl,
+              turn=8 * math.sin(t * 0.37 + seed), tilt=st["tilt"] * 0.8)
     return st
 
 
@@ -1530,7 +1562,7 @@ def draw(ctx, cx, base_y, scale, state):
     _nose_mouth(ctx, emo, level, state.get("vis"), state.get("vamt", 0.0))
     _hair_front(ctx, t, sway)
     ctx.restore()
-    _arms(ctx, pose, t, True, state.get("pose2"), state.get("blend", 0.0), level, state.get("beat", 0.0),
+    _arms(ctx, pose, t, True, state.get("pose2"), state.get("blend", 0.0), state.get("body_level", level), state.get("beat", 0.0),
           state.get("overlap", False))
     ctx.restore()
 
