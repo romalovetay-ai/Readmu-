@@ -94,9 +94,9 @@ _V2_BEATS = os.environ.get("VOICE_V2_BEATS")   # e.g. "14-18": use v2 only for t
 POST_V2 = ("highpass=f=75,afftdn=nf=-28:tn=1,equalizer=f=250:t=q:w=1.2:g=-2.5,equalizer=f=3200:t=q:w=1.0:g=3,"
            "equalizer=f=9500:t=q:w=1.5:g=2,deesser=i=0.4,acompressor=threshold=-20dB:ratio=3:attack=6:release=90:makeup=2,"
            "aecho=0.8:0.6:24|37:0.05|0.03,loudnorm=I=-16:TP=-1.5")
-POST_V2_SHOUT = ("highpass=f=90,afftdn=nf=-28:tn=1,rubberband=pitch=1.03,equalizer=f=250:t=q:w=1.2:g=-3,"
-                 "equalizer=f=2800:t=q:w=1.0:g=4,deesser=i=0.5,acompressor=threshold=-22dB:ratio=5:attack=4:release=70:makeup=3,"
-                 "aexciter=amount=1.5,aecho=0.8:0.6:24|37:0.05|0.03,loudnorm=I=-15:TP=-1.5")
+POST_V2_SHOUT = ("highpass=f=85,afftdn=nf=-30:tn=1,equalizer=f=250:t=q:w=1.2:g=-2.5,equalizer=f=2800:t=q:w=1.0:g=2.5,"   # clean: no
+                 "deesser=i=0.5,acompressor=threshold=-20dB:ratio=4:attack=8:release=90:makeup=2,"                    # exciter, pitch
+                 "alimiter=limit=0.89,loudnorm=I=-15:TP=-1.5")                                                       # or room echo
 
 
 def f5_voice(model=None):
