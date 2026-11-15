@@ -1576,7 +1576,9 @@ def render(b, tl, t, level, beats):
         else:
             stt = character.perform(t, level, b.get("pose", "explain"), b.get("emo", "neutral"), seed=b["idx"])
         if shout:
-            stt["emo"] = "angry" if int(t * 1.5) % 3 else "wow"
+            stt["emo"] = "angry"
+            if "emo2" in stt:
+                stt["emo2"] = "angry"
         stt["look"] = {"center": stt["look"] * 0.5, "right": -0.7, "left": 0.7}.get(ch["where"], 0.0)
         prev = beats[b["idx"] - 1] if b["idx"] > 0 else None
         enter = prev is None or prev.get("char", "center") != b.get("char", "center") or prev.get("shot") != b.get("shot")

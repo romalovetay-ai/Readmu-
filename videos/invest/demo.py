@@ -365,7 +365,7 @@ def frame(fi):
     st = character.perform_v2(T, level, b["words"], tl, b.get("pose", "explain"), b.get("emo", "neutral"), seed=b["idx"],
                               body_level=float(G["body"][afi]) if afi < len(G["body"]) else level)
     if b.get("style") == "shout":
-        st["emo"] = "angry" if int(T * 1.5) % 3 else "wow"
+        st["emo"] = st["emo2"] = "angry"
     st["look"] = -0.7
     enter = i == FIRST + 1
     k = ease(tl / 0.5) if enter else 1.0

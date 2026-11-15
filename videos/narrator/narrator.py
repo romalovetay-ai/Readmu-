@@ -824,15 +824,15 @@ def _blink_at(t):
     return max(0.0, min(1.0, best))
 
 
-def _eyes(ctx, emo, t, look, blink_override, brow=0.0):
-    lid, braise, btilt, _, pup = EMO.get(emo, EMO["neutral"])
+def _eyes(ctx, emo, t, look, blink_override, brow=0.0, params=None):
+    lid, braise, btilt, _, pup = params if params is not None else EMO.get(emo, EMO["neutral"])
     braise = braise + brow
     blink = blink_override
     if blink is None:
         blink = _blink_at(t)
     for sx in (-1, 1):
         ex, ey = sx * 92, -610
-        rx, ry = 62, 56 if emo != "wow" else 64
+        rx, ry = 62, 56 + 8 * max(0.0, braise - 0.6) / 0.4 if params is not None else (56 if emo != "wow" else 64)
         # eye white
         _ellipse(ctx, ex, ey, rx, ry)
         _c(ctx, (1, 1, 1))
@@ -1017,8 +1017,8 @@ def _nose_mouth(ctx, emo, level, vis=None, vamt=0.0):
     ctx.fill()
     mouth = EMO.get(emo, EMO["neutral"])[3]
     mx, my = 4, -458
-    if vis is not None and (level > 0.05 or vamt > 0.05):
-        _viseme_mouth(ctx, vis, vamt, level, emo)
+    if vis is not None:
+        _viseme_mouth(ctx, vis, vamt, max(level, 0.3), emo)
         return
     if level > 0.08:
         h = 10 + 46 * min(1.0, level)
@@ -1513,11 +1513,28 @@ def _mouth_params(words, lt):
     return tuple(x / wsum for x in acc), amt / wsum
 
 
-def perform_v2(t, level, words, lt, pose="explain", emo="neutral", seed=0, hold=3.6, trans=1.0, body_level=None):
-    """perform() + lip-sync from word timings [(t0, t1, word)] (lt = seconds into the beat), smooth accents on
-    words (nod, brows, a hand beat on long words) and overlapping arm motion. body_level: a slowly smoothed
-    voice level for the body, so arms never twitch with every syllable."""
-    st = perform(t, level, pose, emo, seed, hold, trans)
+GESTURES_V2 = ["explain", "point", "shrug", "explain", "cross", "point", "explain", "shrug"]
+FACE_FREE = {"facepalm": "shrug", "think": "explain"}   # poses that hide the face are replaced in v2
+
+
+def perform_v2(t, level, words, lt, pose="explain", emo="neutral", seed=0, hold=4.2, trans=1.4, body_level=None):
+    """Calm acting for talking shots: gestures change every ~hold s and glide over trans s (shoulder leads,
+    hand follows), no pose ever covers the face, the expression cross-fades slowly instead of snapping,
+    the mouth glides between sounds from word timings, and words get only soft accents (nod, brows)."""
+    pose = FACE_FREE.get(pose, pose)
+    tt = t + seed * 1.37
+    k = int(tt / hold)
+    ph = tt - k * hold
+    if pose in ("idle", "explain"):
+        p1 = GESTURES_V2[(k + seed) % len(GESTURES_V2)]
+        p2 = GESTURES_V2[(k + 1 + seed) % len(GESTURES_V2)]
+    else:
+        p1 = p2 = pose
+    blend = _smoothstep((ph - (hold - trans)) / trans)
+    emos = TALK_EMOS.get(emo, TALK_EMOS["neutral"])
+    e1 = emos[(k + seed) % len(emos)]
+    e2 = emos[(k + 1 + seed) % len(emos)]
+    eu = _smoothstep((ph - (hold - trans)) / trans)
     shape_, vamt = _mouth_params(words, lt)
     energy, long_e = 0.0, 0.0
     for w0, w1, w in words:
@@ -1528,10 +1545,11 @@ def perform_v2(t, level, words, lt, pose="explain", emo="neutral", seed=0, hold=
         energy = max(energy, e * (0.5 + 0.5 * weight))
         long_e = max(long_e, e * max(0.0, weight - 0.4) / 0.6)
     bl = level if body_level is None else body_level
-    st.update(vis=shape_ if (vamt > 0.03 or level > 0.08) else None, vamt=max(vamt, 0.0),
-              nod=5.0 * energy, brow=0.28 * long_e, beat=0.7 * long_e, overlap=True, body_level=bl,
-              turn=8 * math.sin(t * 0.37 + seed), tilt=st["tilt"] * 0.8)
-    return st
+    tilt = 0.03 * math.sin(t * 0.55 + seed)
+    return {"pose": p1, "pose2": p2, "blend": blend, "emo": e1, "emo2": e2, "emo_u": eu, "t": t, "level": level,
+            "look": 0.25 * math.sin(t * 0.3 + seed), "tilt": tilt, "vis": shape_, "vamt": vamt,
+            "nod": 3.5 * energy, "brow": 0.2 * long_e, "beat": 0.35 * long_e, "overlap": True, "body_level": bl,
+            "turn": 6 * math.sin(t * 0.33 + seed)}
 
 
 def draw(ctx, cx, base_y, scale, state):
@@ -1558,7 +1576,14 @@ def draw(ctx, cx, base_y, scale, state):
     _ears(ctx)
     _face_shape(ctx)
     _earrings(ctx, t)
-    _eyes(ctx, emo, t, look, state.get("blink"), state.get("brow", 0.0))
+    params = None
+    if state.get("emo2"):
+        a_, b_ = EMO.get(emo, EMO["neutral"]), EMO.get(state["emo2"], EMO["neutral"])
+        u_ = _smoothstep(state.get("emo_u", 0.0))
+        params = tuple(a_[k] + (b_[k] - a_[k]) * u_ if k != 3 else (b_[3] if u_ > 0.5 else a_[3]) for k in range(5))
+        if u_ > 0.5:
+            emo = state["emo2"]
+    _eyes(ctx, emo, t, look, state.get("blink"), state.get("brow", 0.0), params)
     _nose_mouth(ctx, emo, level, state.get("vis"), state.get("vamt", 0.0))
     _hair_front(ctx, t, sway)
     ctx.restore()
