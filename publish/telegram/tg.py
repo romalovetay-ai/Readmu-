@@ -44,7 +44,7 @@ def api(method, fields=None, files=None, soft=False):
     else:
         req = urllib.request.Request(url, urllib.parse.urlencode(fields).encode())
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with urllib.request.urlopen(req, timeout=180 if files else 60) as r:
             return json.load(r)["result"]
     except urllib.error.HTTPError as e:
         msg = f"Telegram: {e.code} {e.read().decode()}"
@@ -88,7 +88,12 @@ def cmd_post(a):
     if len(caption) > 1024:
         sys.exit(f"Подпись {len(caption)} символов, максимум 1024. Сократи.")
     if CFG["mode"] == "auto" or a.now:
-        r = send(CFG["channel"], a.photo, caption)
+        try:
+            r = send(CFG["channel"], a.photo, caption)
+        except (TimeoutError, urllib.error.URLError) as e:
+            # Telegram often accepts the photo but the reply never arrives: a retry would post a duplicate.
+            sys.exit(f"Ответ Telegram не пришёл ({e}). НЕ отправляй повторно: подожди минуту, "
+                     "запусти `tg.py dedupe` и проверь канал — пост, скорее всего, уже опубликован.")
         print(f"Опубликовано: message_id {r['message_id']}")
     else:
         if not CFG.get("admin_chat_id"):
